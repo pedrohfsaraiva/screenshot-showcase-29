@@ -30,7 +30,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { Progress } from "@/components/ui/progress";
 import { useScenario } from "@/state/ScenarioContext";
 import { rolledThroughputYield } from "@/engine/yield";
 import { reverseExplode } from "@/engine/reverseExplosion";
