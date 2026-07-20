@@ -355,11 +355,12 @@ function Dashboard() {
                       </span>
                     </span>
                   </div>
-                  <Progress
-                    value={pct}
-                    className="mt-3 h-1.5"
-                    indicatorClassName={tone.bar}
-                  />
+                  <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                    <div
+                      className={cn("h-full transition-all", tone.bar)}
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
                 </CardContent>
               </Card>
             );
