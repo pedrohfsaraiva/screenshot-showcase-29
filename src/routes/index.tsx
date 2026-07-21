@@ -184,7 +184,7 @@ function Dashboard() {
       .sort((a, b) => a.ratio - b.ratio);
 
     return cards.slice(0, 6);
-  }, [state.bom, state.materials, demandaFiltrada, totalDemandaHorizonte, modelo, lote, fatorLote]);
+  }, [state.bom, state.materials, demandaFiltrada, totalDemandaHorizonte, modelo]);
 
   const criticos = stockCards.filter((c) => c.ratio < 0.2).length;
 
