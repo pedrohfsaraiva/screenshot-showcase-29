@@ -366,7 +366,7 @@ function Dashboard() {
       </div>
 
       {/* -------- KPIs -------- */}
-      <div className="p-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <div className="px-8 pt-10 pb-2 grid gap-5 md:grid-cols-2 xl:grid-cols-4">
         <Kpi
           icon={<TrendingUp className="h-4 w-4" />}
           label="Demanda no horizonte"
@@ -401,7 +401,7 @@ function Dashboard() {
       </div>
 
       {/* -------- Gráficos -------- */}
-      <div className="px-6 pb-8 grid gap-4 lg:grid-cols-2">
+      <div className="px-8 pt-8 pb-10 grid gap-6 lg:grid-cols-2">
         <Card>
           <CardHeader>
             <CardTitle className="text-base">
@@ -409,40 +409,46 @@ function Dashboard() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="h-72">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={chartData}>
-                  <defs>
-                    <linearGradient id="dg" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="var(--color-primary)" stopOpacity={0.6} />
-                      <stop offset="100%" stopColor="var(--color-primary)" stopOpacity={0.05} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid stroke="var(--color-border)" strokeDasharray="3 3" />
-                  <XAxis dataKey="periodo" stroke="var(--color-muted-foreground)" fontSize={11} />
-                  <YAxis stroke="var(--color-muted-foreground)" fontSize={11} />
-                  <Tooltip
-                    contentStyle={{
-                      background: "var(--color-card)",
-                      border: "1px solid var(--color-border)",
-                      borderRadius: 8,
-                    }}
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="demanda"
-                    stroke="var(--color-primary)"
-                    fill="url(#dg)"
-                    strokeWidth={2}
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
+            <div className="relative h-72">
+              {totalDemandaHorizonte === 0 ? (
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <Button asChild size="lg" variant="outline" className="gap-2">
+                    <Link to="/cenarios">
+                      <Plus className="h-4 w-4" />
+                      Configurar Demanda Inicial
+                    </Link>
+                  </Button>
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={chartData}>
+                    <defs>
+                      <linearGradient id="dg" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="var(--color-primary)" stopOpacity={0.6} />
+                        <stop offset="100%" stopColor="var(--color-primary)" stopOpacity={0.05} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid stroke="var(--color-border)" strokeDasharray="3 3" />
+                    <XAxis dataKey="periodo" stroke="var(--color-muted-foreground)" fontSize={11} />
+                    <YAxis stroke="var(--color-muted-foreground)" fontSize={11} />
+                    <Tooltip
+                      contentStyle={{
+                        background: "var(--color-card)",
+                        border: "1px solid var(--color-border)",
+                        borderRadius: 8,
+                      }}
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="demanda"
+                      stroke="var(--color-primary)"
+                      fill="url(#dg)"
+                      strokeWidth={2}
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              )}
             </div>
-            {totalDemandaHorizonte === 0 ? (
-              <p className="mt-3 text-xs text-muted-foreground">
-                Ainda não há demanda cadastrada. Adicione valores em Cenários → Demanda.
-              </p>
-            ) : null}
           </CardContent>
         </Card>
 
@@ -455,30 +461,64 @@ function Dashboard() {
           <CardContent>
             <div className="h-72">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={explosao.reconciliacao.slice(0, 10)}>
+                <BarChart
+                  data={explosao.reconciliacao
+                    .filter((r) => r.entradaBruta > 0 || r.saidaAprovada > 0)
+                    .slice(0, 10)
+                    .map((r) => ({
+                      ...r,
+                      stageShort:
+                        r.stageName.length > 12
+                          ? r.stageName.slice(0, 12) + "…"
+                          : r.stageName,
+                    }))}
+                >
                   <CartesianGrid stroke="var(--color-border)" strokeDasharray="3 3" />
                   <XAxis
-                    dataKey="stageName"
+                    dataKey="stageShort"
                     stroke="var(--color-muted-foreground)"
                     fontSize={10}
                     interval={0}
                     angle={-30}
                     textAnchor="end"
-                    height={80}
+                    height={70}
                   />
                   <YAxis stroke="var(--color-muted-foreground)" fontSize={11} />
                   <Tooltip
+                    cursor={{ fill: "transparent" }}
                     contentStyle={{
                       background: "var(--color-card)",
                       border: "1px solid var(--color-border)",
                       borderRadius: 8,
                     }}
+                    labelFormatter={(_label, payload) =>
+                      payload && payload[0]
+                        ? (payload[0].payload as { stageName: string }).stageName
+                        : ""
+                    }
                   />
                   <Legend wrapperStyle={{ fontSize: 12 }} />
-                  <Bar dataKey="entradaBruta" name="Entrada bruta" fill="var(--color-chart-1)" />
-                  <Bar dataKey="saidaAprovada" name="Saída aprovada" fill="var(--color-chart-3)" />
+                  <Bar
+                    dataKey="entradaBruta"
+                    name="Entrada bruta"
+                    fill="var(--color-chart-1)"
+                    minPointSize={0}
+                  />
+                  <Bar
+                    dataKey="saidaAprovada"
+                    name="Saída aprovada"
+                    fill="var(--color-chart-3)"
+                    minPointSize={0}
+                  />
                 </BarChart>
               </ResponsiveContainer>
+              {explosao.reconciliacao.every(
+                (r) => r.entradaBruta === 0 && r.saidaAprovada === 0,
+              ) ? (
+                <p className="mt-3 text-center text-xs text-muted-foreground">
+                  Sem demanda para calcular necessidade por gate.
+                </p>
+              ) : null}
             </div>
           </CardContent>
         </Card>
