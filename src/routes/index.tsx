@@ -124,9 +124,9 @@ function Dashboard() {
       const dm = demandaFiltrada
         .filter((d) => d.periodo === p)
         .reduce((acc, d) => acc + d.demanda, 0);
-      return { periodo: p, demanda: Math.round(dm * fatorLote) };
+      return { periodo: p, demanda: dm };
     });
-  }, [demandaFiltrada, periodosFiltrados, fatorLote]);
+  }, [demandaFiltrada, periodosFiltrados]);
 
   const totalDemandaHorizonte = demandTotals.reduce((a, b) => a + b.demanda, 0);
 
