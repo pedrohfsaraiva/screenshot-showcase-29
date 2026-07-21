@@ -113,6 +113,20 @@ export function ScenarioProvider({ children }: { children: ReactNode }) {
     [],
   );
 
+  const setDemandBulk = useCallback(
+    (modelId: DemandPeriod["modelId"], updates: Record<string, number>) => {
+      setState((s) => ({
+        ...s,
+        demand: s.demand.map((d) =>
+          d.modelId === modelId && updates[d.periodo] !== undefined
+            ? { ...d, demanda: updates[d.periodo] }
+            : d,
+        ),
+      }));
+    },
+    [],
+  );
+
   const setViewMode = useCallback((v: "mensal" | "anual") => {
     setState((s) => ({ ...s, viewMode: v }));
   }, []);
@@ -120,8 +134,8 @@ export function ScenarioProvider({ children }: { children: ReactNode }) {
   const resetToSeed = useCallback(() => setState(defaultState()), []);
 
   const api = useMemo<ScenarioApi>(
-    () => ({ state, setYieldValue, setStageActive, setDemand, setViewMode, resetToSeed }),
-    [state, setYieldValue, setStageActive, setDemand, setViewMode, resetToSeed],
+    () => ({ state, setYieldValue, setStageActive, setDemand, setDemandBulk, setViewMode, resetToSeed }),
+    [state, setYieldValue, setStageActive, setDemand, setDemandBulk, setViewMode, resetToSeed],
   );
 
   return <ScenarioContext.Provider value={api}>{children}</ScenarioContext.Provider>;
