@@ -98,7 +98,6 @@ function Dashboard() {
 
   // -------- Filtros reativos (estado local, não persistido) --------
   const [modelo, setModelo] = useState<ModelFilter>("all");
-  const [lote, setLote] = useState<LoteFilter>("all");
   const [dataInicio, setDataInicio] = useState<string>(state.periodos[0] ?? "");
   const [dataFim, setDataFim] = useState<string>(
     state.periodos[state.periodos.length - 1] ?? "",
@@ -111,8 +110,6 @@ function Dashboard() {
     return state.periodos.slice(ini, fim + 1);
   }, [state.periodos, dataInicio, dataFim]);
 
-  // Multiplicador de lote (piloto reduz demanda, produção mantém).
-  const fatorLote = lote === "piloto" ? 0.15 : lote === "validacao" ? 0.35 : 1;
 
   const demandaFiltrada = useMemo(() => {
     return state.demand.filter(
