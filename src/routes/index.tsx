@@ -234,10 +234,10 @@ function Dashboard() {
       />
 
       {/* -------- Barra de filtros reativos -------- */}
-      <div className="px-6 pt-2">
+      <div className="px-8 pt-4">
         <Card className="border-border/60">
-          <CardContent className="p-5">
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <CardContent className="p-6">
+            <div className="grid gap-5 md:grid-cols-3">
               <FilterField label="Modelo da válvula">
                 <Select value={modelo} onValueChange={(v) => setModelo(v as ModelFilter)}>
                   <SelectTrigger>
@@ -250,20 +250,6 @@ function Dashboard() {
                         {p.nome}
                       </SelectItem>
                     ))}
-                  </SelectContent>
-                </Select>
-              </FilterField>
-
-              <FilterField label="Lote">
-                <Select value={lote} onValueChange={(v) => setLote(v as LoteFilter)}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todos os lotes</SelectItem>
-                    <SelectItem value="piloto">Piloto (15%)</SelectItem>
-                    <SelectItem value="validacao">Validação (35%)</SelectItem>
-                    <SelectItem value="producao">Produção (100%)</SelectItem>
                   </SelectContent>
                 </Select>
               </FilterField>
@@ -303,8 +289,8 @@ function Dashboard() {
       </div>
 
       {/* -------- Cards de estoque crítico -------- */}
-      <div className="px-6 pt-6">
-        <div className="mb-3 flex items-center justify-between">
+      <div className="px-8 pt-8">
+        <div className="mb-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <PackageSearch className="h-4 w-4 text-primary" />
             <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
