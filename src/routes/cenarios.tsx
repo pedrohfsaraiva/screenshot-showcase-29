@@ -29,7 +29,7 @@ export const Route = createFileRoute("/cenarios")({
 });
 
 function CenariosPage() {
-  const { state, setDemand, resetToSeed } = useScenario();
+  const { state, setDemand, setDemandBulk, resetToSeed } = useScenario();
   const [modelo, setModelo] = useState<ModelId>("TR1P-45");
 
   const demandaDoModelo = useMemo(
@@ -37,7 +37,30 @@ function CenariosPage() {
     [state.demand, modelo],
   );
 
-  const totalModelo = demandaDoModelo.reduce((a, d) => a + d.demanda, 0);
+  // Divide os 36 períodos em 3 blocos de 12 meses (Y1, Y2, Y3).
+  const yearBlocks = useMemo(() => {
+    return [0, 1, 2].map((idx) => demandaDoModelo.slice(idx * 12, idx * 12 + 12));
+  }, [demandaDoModelo]);
+
+  const yearTotals = useMemo(
+    () => yearBlocks.map((block) => block.reduce((a, d) => a + d.demanda, 0)),
+    [yearBlocks],
+  );
+
+  const distribuirAno = (yearIdx: number, total: number) => {
+    const block = yearBlocks[yearIdx];
+    if (!block.length) return;
+    const safe = Math.max(0, Math.floor(total));
+    const base = Math.floor(safe / 12);
+    const resto = safe - base * 12;
+    const updates: Record<string, number> = {};
+    block.forEach((d, i) => {
+      updates[d.periodo] = i === 11 ? base + resto : base;
+    });
+    setDemandBulk(modelo, updates);
+  };
+
+  const totalModelo = yearTotals.reduce((a, b) => a + b, 0);
 
   const exportJson = () => {
     const blob = new Blob([JSON.stringify(state, null, 2)], { type: "application/json" });
@@ -138,6 +161,23 @@ function CenariosPage() {
             </div>
           </CardHeader>
           <CardContent className="p-0 max-h-[540px] overflow-auto">
+            <div className="sticky top-0 z-10 bg-card border-b border-border p-4 grid grid-cols-3 gap-3">
+              {[0, 1, 2].map((i) => (
+                <div key={i} className="space-y-1">
+                  <Label htmlFor={`total-y${i + 1}`} className="text-xs text-muted-foreground">
+                    Total Y{i + 1}
+                  </Label>
+                  <Input
+                    id={`total-y${i + 1}`}
+                    type="number"
+                    min={0}
+                    value={yearTotals[i] ?? 0}
+                    onChange={(e) => distribuirAno(i, Number(e.target.value) || 0)}
+                    className="text-right tabular-nums"
+                  />
+                </div>
+              ))}
+            </div>
             <Table>
               <TableHeader>
                 <TableRow>
