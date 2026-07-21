@@ -176,7 +176,7 @@ function Dashboard() {
         const ideal = Math.max(1, Math.ceil(needByMaterial.get(m.id) ?? 0));
         // Saldo projetado: mistura de hash determinístico + estoque de segurança.
         const projetado = Math.round(
-          ideal * hashRatio(m.id + modelo + lote) + m.estoqueSeguranca,
+          ideal * hashRatio(m.id + modelo) + m.estoqueSeguranca,
         );
         const ratio = ideal > 0 ? projetado / ideal : 1;
         return { material: m, ideal, projetado, ratio };
