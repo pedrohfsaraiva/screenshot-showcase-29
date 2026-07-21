@@ -55,7 +55,6 @@ export const Route = createFileRoute("/")({
 });
 
 type ModelFilter = "all" | ModelId;
-type LoteFilter = "all" | "piloto" | "producao" | "validacao";
 
 // Hash determinístico simples para simular saldo projetado por material.
 function hashRatio(seed: string): number {
