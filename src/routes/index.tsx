@@ -17,8 +17,11 @@ import {
   CheckCircle2,
   Factory,
   PackageSearch,
+  Plus,
   TrendingUp,
 } from "lucide-react";
+import { Link } from "@tanstack/react-router";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageHeader } from "@/components/PageHeader";
 import { ProvisionalBadge } from "@/components/ProvisionalBadge";
