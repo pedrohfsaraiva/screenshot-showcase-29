@@ -210,18 +210,26 @@ function Dashboard() {
         title="Visão Geral"
         subtitle="Painel executivo com alertas de estoque, RTY e projeção de demanda."
         actions={
-          <Select
-            value={state.viewMode}
-            onValueChange={(v) => setViewMode(v as "mensal" | "anual")}
-          >
-            <SelectTrigger className="w-40">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="mensal">Visão mensal</SelectItem>
-              <SelectItem value="anual">Y1 · Y2 · Y3</SelectItem>
-            </SelectContent>
-          </Select>
+          <div className="flex items-center gap-2">
+            <Select
+              value={state.viewMode}
+              onValueChange={(v) => setViewMode(v as "mensal" | "anual")}
+            >
+              <SelectTrigger className="w-40">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="mensal">Visão mensal</SelectItem>
+                <SelectItem value="anual">Y1 · Y2 · Y3</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button asChild size="sm" className="gap-1.5">
+              <Link to="/cenarios">
+                <Plus className="h-4 w-4" />
+                Inserir Demanda
+              </Link>
+            </Button>
+          </div>
         }
       />
 
