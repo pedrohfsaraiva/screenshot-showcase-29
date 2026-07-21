@@ -41,6 +41,10 @@ interface ScenarioApi {
   setYieldValue: (stageId: string, valor: number | null) => void;
   setStageActive: (stageId: string, ativo: boolean) => void;
   setDemand: (modelId: DemandPeriod["modelId"], periodo: string, demanda: number) => void;
+  setDemandBulk: (
+    modelId: DemandPeriod["modelId"],
+    updates: Record<string, number>,
+  ) => void;
   setViewMode: (v: "mensal" | "anual") => void;
   resetToSeed: () => void;
 }
