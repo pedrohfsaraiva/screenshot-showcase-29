@@ -161,7 +161,7 @@ function Dashboard() {
       const demandaBase = l.modelId
         ? demandaFiltrada
             .filter((d) => d.modelId === l.modelId)
-            .reduce((a, b) => a + b.demanda, 0) * fatorLote
+            .reduce((a, b) => a + b.demanda, 0)
         : totalDemandaHorizonte;
       const nec = demandaBase * l.qtyPer;
       needByMaterial.set(
