@@ -161,6 +161,23 @@ function CenariosPage() {
             </div>
           </CardHeader>
           <CardContent className="p-0 max-h-[540px] overflow-auto">
+            <div className="sticky top-0 z-10 bg-card border-b border-border p-4 grid grid-cols-3 gap-3">
+              {[0, 1, 2].map((i) => (
+                <div key={i} className="space-y-1">
+                  <Label htmlFor={`total-y${i + 1}`} className="text-xs text-muted-foreground">
+                    Total Y{i + 1}
+                  </Label>
+                  <Input
+                    id={`total-y${i + 1}`}
+                    type="number"
+                    min={0}
+                    value={yearTotals[i] ?? 0}
+                    onChange={(e) => distribuirAno(i, Number(e.target.value) || 0)}
+                    className="text-right tabular-nums"
+                  />
+                </div>
+              ))}
+            </div>
             <Table>
               <TableHeader>
                 <TableRow>
