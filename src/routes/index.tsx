@@ -17,8 +17,11 @@ import {
   CheckCircle2,
   Factory,
   PackageSearch,
+  Plus,
   TrendingUp,
 } from "lucide-react";
+import { Link } from "@tanstack/react-router";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageHeader } from "@/components/PageHeader";
 import { ProvisionalBadge } from "@/components/ProvisionalBadge";
@@ -52,7 +55,6 @@ export const Route = createFileRoute("/")({
 });
 
 type ModelFilter = "all" | ModelId;
-type LoteFilter = "all" | "piloto" | "producao" | "validacao";
 
 // Hash determinístico simples para simular saldo projetado por material.
 function hashRatio(seed: string): number {
@@ -96,7 +98,6 @@ function Dashboard() {
 
   // -------- Filtros reativos (estado local, não persistido) --------
   const [modelo, setModelo] = useState<ModelFilter>("all");
-  const [lote, setLote] = useState<LoteFilter>("all");
   const [dataInicio, setDataInicio] = useState<string>(state.periodos[0] ?? "");
   const [dataFim, setDataFim] = useState<string>(
     state.periodos[state.periodos.length - 1] ?? "",
@@ -109,8 +110,6 @@ function Dashboard() {
     return state.periodos.slice(ini, fim + 1);
   }, [state.periodos, dataInicio, dataFim]);
 
-  // Multiplicador de lote (piloto reduz demanda, produção mantém).
-  const fatorLote = lote === "piloto" ? 0.15 : lote === "validacao" ? 0.35 : 1;
 
   const demandaFiltrada = useMemo(() => {
     return state.demand.filter(
@@ -125,9 +124,9 @@ function Dashboard() {
       const dm = demandaFiltrada
         .filter((d) => d.periodo === p)
         .reduce((acc, d) => acc + d.demanda, 0);
-      return { periodo: p, demanda: Math.round(dm * fatorLote) };
+      return { periodo: p, demanda: dm };
     });
-  }, [demandaFiltrada, periodosFiltrados, fatorLote]);
+  }, [demandaFiltrada, periodosFiltrados]);
 
   const totalDemandaHorizonte = demandTotals.reduce((a, b) => a + b.demanda, 0);
 
@@ -162,7 +161,7 @@ function Dashboard() {
       const demandaBase = l.modelId
         ? demandaFiltrada
             .filter((d) => d.modelId === l.modelId)
-            .reduce((a, b) => a + b.demanda, 0) * fatorLote
+            .reduce((a, b) => a + b.demanda, 0)
         : totalDemandaHorizonte;
       const nec = demandaBase * l.qtyPer;
       needByMaterial.set(
@@ -177,7 +176,7 @@ function Dashboard() {
         const ideal = Math.max(1, Math.ceil(needByMaterial.get(m.id) ?? 0));
         // Saldo projetado: mistura de hash determinístico + estoque de segurança.
         const projetado = Math.round(
-          ideal * hashRatio(m.id + modelo + lote) + m.estoqueSeguranca,
+          ideal * hashRatio(m.id + modelo) + m.estoqueSeguranca,
         );
         const ratio = ideal > 0 ? projetado / ideal : 1;
         return { material: m, ideal, projetado, ratio };
@@ -185,7 +184,7 @@ function Dashboard() {
       .sort((a, b) => a.ratio - b.ratio);
 
     return cards.slice(0, 6);
-  }, [state.bom, state.materials, demandaFiltrada, totalDemandaHorizonte, modelo, lote, fatorLote]);
+  }, [state.bom, state.materials, demandaFiltrada, totalDemandaHorizonte, modelo]);
 
   const criticos = stockCards.filter((c) => c.ratio < 0.2).length;
 
@@ -211,26 +210,34 @@ function Dashboard() {
         title="Visão Geral"
         subtitle="Painel executivo com alertas de estoque, RTY e projeção de demanda."
         actions={
-          <Select
-            value={state.viewMode}
-            onValueChange={(v) => setViewMode(v as "mensal" | "anual")}
-          >
-            <SelectTrigger className="w-40">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="mensal">Visão mensal</SelectItem>
-              <SelectItem value="anual">Y1 · Y2 · Y3</SelectItem>
-            </SelectContent>
-          </Select>
+          <div className="flex items-center gap-2">
+            <Select
+              value={state.viewMode}
+              onValueChange={(v) => setViewMode(v as "mensal" | "anual")}
+            >
+              <SelectTrigger className="w-40">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="mensal">Visão mensal</SelectItem>
+                <SelectItem value="anual">Y1 · Y2 · Y3</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button asChild size="sm" className="gap-1.5">
+              <Link to="/cenarios">
+                <Plus className="h-4 w-4" />
+                Inserir Demanda
+              </Link>
+            </Button>
+          </div>
         }
       />
 
       {/* -------- Barra de filtros reativos -------- */}
-      <div className="px-6 pt-2">
+      <div className="px-8 pt-4">
         <Card className="border-border/60">
-          <CardContent className="p-5">
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <CardContent className="p-6">
+            <div className="grid gap-5 md:grid-cols-3">
               <FilterField label="Modelo da válvula">
                 <Select value={modelo} onValueChange={(v) => setModelo(v as ModelFilter)}>
                   <SelectTrigger>
@@ -243,20 +250,6 @@ function Dashboard() {
                         {p.nome}
                       </SelectItem>
                     ))}
-                  </SelectContent>
-                </Select>
-              </FilterField>
-
-              <FilterField label="Lote">
-                <Select value={lote} onValueChange={(v) => setLote(v as LoteFilter)}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todos os lotes</SelectItem>
-                    <SelectItem value="piloto">Piloto (15%)</SelectItem>
-                    <SelectItem value="validacao">Validação (35%)</SelectItem>
-                    <SelectItem value="producao">Produção (100%)</SelectItem>
                   </SelectContent>
                 </Select>
               </FilterField>
@@ -296,8 +289,8 @@ function Dashboard() {
       </div>
 
       {/* -------- Cards de estoque crítico -------- */}
-      <div className="px-6 pt-6">
-        <div className="mb-3 flex items-center justify-between">
+      <div className="px-8 pt-8">
+        <div className="mb-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <PackageSearch className="h-4 w-4 text-primary" />
             <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
@@ -310,7 +303,7 @@ function Dashboard() {
               : "Todos os insumos monitorados dentro do previsto"}
           </span>
         </div>
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
           {stockCards.map((c) => {
             const tone = stockTone(c.ratio);
             const pct = Math.min(100, Math.round(c.ratio * 100));
@@ -373,7 +366,7 @@ function Dashboard() {
       </div>
 
       {/* -------- KPIs -------- */}
-      <div className="p-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <div className="px-8 pt-10 pb-2 grid gap-5 md:grid-cols-2 xl:grid-cols-4">
         <Kpi
           icon={<TrendingUp className="h-4 w-4" />}
           label="Demanda no horizonte"
@@ -408,7 +401,7 @@ function Dashboard() {
       </div>
 
       {/* -------- Gráficos -------- */}
-      <div className="px-6 pb-8 grid gap-4 lg:grid-cols-2">
+      <div className="px-8 pt-8 pb-10 grid gap-6 lg:grid-cols-2">
         <Card>
           <CardHeader>
             <CardTitle className="text-base">
@@ -416,40 +409,46 @@ function Dashboard() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="h-72">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={chartData}>
-                  <defs>
-                    <linearGradient id="dg" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="var(--color-primary)" stopOpacity={0.6} />
-                      <stop offset="100%" stopColor="var(--color-primary)" stopOpacity={0.05} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid stroke="var(--color-border)" strokeDasharray="3 3" />
-                  <XAxis dataKey="periodo" stroke="var(--color-muted-foreground)" fontSize={11} />
-                  <YAxis stroke="var(--color-muted-foreground)" fontSize={11} />
-                  <Tooltip
-                    contentStyle={{
-                      background: "var(--color-card)",
-                      border: "1px solid var(--color-border)",
-                      borderRadius: 8,
-                    }}
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="demanda"
-                    stroke="var(--color-primary)"
-                    fill="url(#dg)"
-                    strokeWidth={2}
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
+            <div className="relative h-72">
+              {totalDemandaHorizonte === 0 ? (
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <Button asChild size="lg" variant="outline" className="gap-2">
+                    <Link to="/cenarios">
+                      <Plus className="h-4 w-4" />
+                      Configurar Demanda Inicial
+                    </Link>
+                  </Button>
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={chartData}>
+                    <defs>
+                      <linearGradient id="dg" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="var(--color-primary)" stopOpacity={0.6} />
+                        <stop offset="100%" stopColor="var(--color-primary)" stopOpacity={0.05} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid stroke="var(--color-border)" strokeDasharray="3 3" />
+                    <XAxis dataKey="periodo" stroke="var(--color-muted-foreground)" fontSize={11} />
+                    <YAxis stroke="var(--color-muted-foreground)" fontSize={11} />
+                    <Tooltip
+                      contentStyle={{
+                        background: "var(--color-card)",
+                        border: "1px solid var(--color-border)",
+                        borderRadius: 8,
+                      }}
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="demanda"
+                      stroke="var(--color-primary)"
+                      fill="url(#dg)"
+                      strokeWidth={2}
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              )}
             </div>
-            {totalDemandaHorizonte === 0 ? (
-              <p className="mt-3 text-xs text-muted-foreground">
-                Ainda não há demanda cadastrada. Adicione valores em Cenários → Demanda.
-              </p>
-            ) : null}
           </CardContent>
         </Card>
 
@@ -462,30 +461,64 @@ function Dashboard() {
           <CardContent>
             <div className="h-72">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={explosao.reconciliacao.slice(0, 10)}>
+                <BarChart
+                  data={explosao.reconciliacao
+                    .filter((r) => r.entradaBruta > 0 || r.saidaAprovada > 0)
+                    .slice(0, 10)
+                    .map((r) => ({
+                      ...r,
+                      stageShort:
+                        r.stageName.length > 12
+                          ? r.stageName.slice(0, 12) + "…"
+                          : r.stageName,
+                    }))}
+                >
                   <CartesianGrid stroke="var(--color-border)" strokeDasharray="3 3" />
                   <XAxis
-                    dataKey="stageName"
+                    dataKey="stageShort"
                     stroke="var(--color-muted-foreground)"
                     fontSize={10}
                     interval={0}
                     angle={-30}
                     textAnchor="end"
-                    height={80}
+                    height={70}
                   />
                   <YAxis stroke="var(--color-muted-foreground)" fontSize={11} />
                   <Tooltip
+                    cursor={{ fill: "transparent" }}
                     contentStyle={{
                       background: "var(--color-card)",
                       border: "1px solid var(--color-border)",
                       borderRadius: 8,
                     }}
+                    labelFormatter={(_label, payload) =>
+                      payload && payload[0]
+                        ? (payload[0].payload as { stageName: string }).stageName
+                        : ""
+                    }
                   />
                   <Legend wrapperStyle={{ fontSize: 12 }} />
-                  <Bar dataKey="entradaBruta" name="Entrada bruta" fill="var(--color-chart-1)" />
-                  <Bar dataKey="saidaAprovada" name="Saída aprovada" fill="var(--color-chart-3)" />
+                  <Bar
+                    dataKey="entradaBruta"
+                    name="Entrada bruta"
+                    fill="var(--color-chart-1)"
+                    minPointSize={0}
+                  />
+                  <Bar
+                    dataKey="saidaAprovada"
+                    name="Saída aprovada"
+                    fill="var(--color-chart-3)"
+                    minPointSize={0}
+                  />
                 </BarChart>
               </ResponsiveContainer>
+              {explosao.reconciliacao.every(
+                (r) => r.entradaBruta === 0 && r.saidaAprovada === 0,
+              ) ? (
+                <p className="mt-3 text-center text-xs text-muted-foreground">
+                  Sem demanda para calcular necessidade por gate.
+                </p>
+              ) : null}
             </div>
           </CardContent>
         </Card>
