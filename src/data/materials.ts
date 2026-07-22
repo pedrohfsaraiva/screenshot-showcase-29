@@ -36,6 +36,8 @@ export const materials: Material[] = [
   m("sleeve", "Sleeve", "Estrutural", "peça"),
   m("sutura_montagem", "Sutura de montagem", "Consumível", "cm"),
   m("sutura_loading", "Sutura de loading", "Consumível", "cm"),
+  m("fios", "Fios", "Consumível", "cm"),
+  m("solucao", "Solução", "Solução", "mL"),
   m("solucao_tratamento", "Solução de tratamento", "Solução", "mL"),
   m("solucao_armazenagem", "Solução de armazenagem", "Solução", "mL"),
   m("embalagem_primaria", "Embalagem primária", "Embalagem", "peça"),

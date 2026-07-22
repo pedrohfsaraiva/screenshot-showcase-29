@@ -2,21 +2,32 @@ import { createFileRoute } from "@tanstack/react-router";
 import { PageHeader } from "@/components/PageHeader";
 import { ProvisionalBadge } from "@/components/ProvisionalBadge";
 import { Card, CardContent } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Input } from "@/components/ui/input";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { useScenario } from "@/state/ScenarioContext";
 
 export const Route = createFileRoute("/bom")({
   head: () => ({
     meta: [
       { title: "BOM · Topaz MRP" },
-      { name: "description", content: "Lista de materiais (Bill of Materials) da válvula Topaz." },
+      {
+        name: "description",
+        content: "Lista de materiais (Bill of Materials) da válvula Topaz.",
+      },
     ],
   }),
   component: BomPage,
 });
 
 function BomPage() {
-  const { state } = useScenario();
+  const { state, setBomQty } = useScenario();
   const matById = new Map(state.materials.map((m) => [m.id, m]));
 
   return (
@@ -43,6 +54,7 @@ function BomPage() {
               <TableBody>
                 {state.bom.map((line, i) => {
                   const mat = matById.get(line.childId);
+                  const provisorio = line.qtyPer === null;
                   return (
                     <TableRow key={i}>
                       <TableCell className="font-medium">{line.parentId}</TableCell>
@@ -54,13 +66,25 @@ function BomPage() {
                         {line.stageId}
                       </TableCell>
                       <TableCell className="text-right tabular-nums">
-                        {line.qtyPer ?? "—"}
+                        <Input
+                          type="number"
+                          min={0}
+                          step="any"
+                          value={line.qtyPer ?? ""}
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            setBomQty(i, v === "" ? null : Number(v));
+                          }}
+                          className="h-8 w-24 ml-auto text-right tabular-nums"
+                        />
                       </TableCell>
                       <TableCell className="text-muted-foreground">
                         {mat?.unidade ?? "—"}
                       </TableCell>
                       <TableCell>
-                        {line.qtyPer === null ? <ProvisionalBadge /> : (
+                        {provisorio ? (
+                          <ProvisionalBadge />
+                        ) : (
                           <span className="text-xs text-success">Definido</span>
                         )}
                       </TableCell>

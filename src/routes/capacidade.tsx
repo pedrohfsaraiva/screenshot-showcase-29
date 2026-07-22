@@ -1,44 +1,190 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useMemo } from "react";
 import { PageHeader } from "@/components/PageHeader";
-import { ProvisionalBadge } from "@/components/ProvisionalBadge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { useScenario } from "@/state/ScenarioContext";
+import { reverseExplode } from "@/engine/reverseExplosion";
+import { formatInt } from "@/lib/format";
+
+// Constantes de conversão de capacidade
+const DIAS_UTEIS_POR_MES = 22;
 
 export const Route = createFileRoute("/capacidade")({
   head: () => ({
     meta: [
       { title: "Capacidade · Topaz MRP" },
-      { name: "description", content: "Planejamento de capacidade em horas padrão." },
+      {
+        name: "description",
+        content:
+          "Planejamento de capacidade em FTE a partir das taxas de produção por etapa.",
+      },
     ],
   }),
   component: CapacidadePage,
 });
 
 function CapacidadePage() {
+  const { state, setCapacity } = useScenario();
+
+  // Necessidade bruta por etapa: soma da entrada bruta de cada modelo, considerando
+  // a demanda cadastrada e os yields por modelo.
+  const necessidadePorEtapa = useMemo(() => {
+    const acc: Record<string, number> = {};
+    for (const p of state.products) {
+      const demanda = state.demand
+        .filter((d) => d.modelId === p.id)
+        .reduce((a, d) => a + d.demanda, 0);
+      if (demanda <= 0) continue;
+      const exp = reverseExplode(demanda, state.stages, state.yields, p.id);
+      for (const r of exp.reconciliacao) {
+        acc[r.stageId] = (acc[r.stageId] ?? 0) + r.entradaBruta;
+      }
+    }
+    return acc;
+  }, [state.demand, state.products, state.stages, state.yields]);
+
+  const mesesHorizonte = state.periodos.length || 36;
+  const diasHorizonte = mesesHorizonte * DIAS_UTEIS_POR_MES;
+
+  const stagesSorted = useMemo(
+    () => [...state.stages].sort((a, b) => a.ordem - b.ordem),
+    [state.stages],
+  );
+
   return (
     <div>
       <PageHeader
-        title="Capacidade"
-        subtitle="Módulo em preparação para a próxima iteração."
+        title="Capacidade · Tempos e Métodos"
+        subtitle={`FTE calculado sobre a necessidade bruta do horizonte (${mesesHorizonte} meses × ${DIAS_UTEIS_POR_MES} dias úteis).`}
       />
       <div className="p-6">
         <Card>
-          <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
-              Planejamento em horas padrão <ProvisionalBadge label="EM CONSTRUÇÃO" />
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="text-sm text-muted-foreground space-y-2">
-            <p>
-              Nesta fase, o motor MRP e os yields por gate estão implementados. O
-              planejamento de capacidade (FTE, utilização, gargalos por recurso)
-              será construído sobre a rota e os yields já disponíveis.
-            </p>
-            <p>
-              Defaults a partir da especificação: stentless = 2 un/dia/operador, Inner
-              = 1 un/dia/operador, Full = 1,5 op-dia (TR1P-45) e 2,5 op-dia (TR1P-55).
-            </p>
+          <CardContent className="p-0 overflow-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>#</TableHead>
+                  <TableHead>Etapa</TableHead>
+                  <TableHead className="text-right">Necessidade bruta</TableHead>
+                  <TableHead className="text-right">Unidades / dia / operador</TableHead>
+                  <TableHead className="text-right">Operadores disponíveis</TableHead>
+                  <TableHead className="text-right">FTE necessário</TableHead>
+                  <TableHead className="text-right">Cobertura</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {stagesSorted.map((stage) => {
+                  const cap = state.capacity[stage.id] ?? {
+                    taxaPorDia: null,
+                    operadores: null,
+                  };
+                  const necessidade = necessidadePorEtapa[stage.id] ?? 0;
+                  const fteNecessario =
+                    cap.taxaPorDia && cap.taxaPorDia > 0
+                      ? necessidade / (cap.taxaPorDia * diasHorizonte)
+                      : null;
+                  const cobertura =
+                    fteNecessario !== null && cap.operadores && cap.operadores > 0
+                      ? cap.operadores / fteNecessario
+                      : null;
+                  const gap = fteNecessario !== null && cap.operadores !== null
+                    ? cap.operadores - fteNecessario
+                    : null;
+                  const status =
+                    fteNecessario === null
+                      ? "muted"
+                      : gap !== null && gap < 0
+                        ? "danger"
+                        : gap !== null && gap < 0.5
+                          ? "warn"
+                          : "ok";
+                  return (
+                    <TableRow key={stage.id} className={stage.ativo ? "" : "opacity-60"}>
+                      <TableCell className="text-muted-foreground text-xs tabular-nums">
+                        {stage.ordem}
+                      </TableCell>
+                      <TableCell className="font-medium">
+                        {stage.nome}
+                        <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                          {stage.tipo}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        {necessidade > 0 ? formatInt(necessidade) : "—"}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Input
+                          type="number"
+                          min={0}
+                          step="any"
+                          value={cap.taxaPorDia ?? ""}
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            setCapacity(stage.id, {
+                              taxaPorDia: v === "" ? null : Number(v),
+                            });
+                          }}
+                          className="h-8 w-24 ml-auto text-right tabular-nums"
+                          placeholder="—"
+                        />
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Input
+                          type="number"
+                          min={0}
+                          step="1"
+                          value={cap.operadores ?? ""}
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            setCapacity(stage.id, {
+                              operadores: v === "" ? null : Number(v),
+                            });
+                          }}
+                          className="h-8 w-20 ml-auto text-right tabular-nums"
+                          placeholder="—"
+                        />
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums font-semibold">
+                        {fteNecessario === null ? "—" : fteNecessario.toFixed(2)}
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        {cobertura === null ? (
+                          <span className="text-muted-foreground">—</span>
+                        ) : (
+                          <span
+                            className={
+                              status === "danger"
+                                ? "text-destructive font-semibold"
+                                : status === "warn"
+                                  ? "text-warning font-semibold"
+                                  : "text-success font-semibold"
+                            }
+                          >
+                            {(cobertura * 100).toFixed(0)}%
+                          </span>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
           </CardContent>
         </Card>
+        <p className="mt-4 text-xs text-muted-foreground">
+          FTE necessário = necessidade bruta ÷ (unidades/dia/operador × {diasHorizonte} dias
+          úteis do horizonte). Cobertura compara operadores disponíveis com o FTE
+          necessário.
+        </p>
       </div>
     </div>
   );

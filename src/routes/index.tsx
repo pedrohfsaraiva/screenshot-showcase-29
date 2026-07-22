@@ -130,25 +130,71 @@ function Dashboard() {
 
   const totalDemandaHorizonte = demandTotals.reduce((a, b) => a + b.demanda, 0);
 
-  // -------- RTY: mantém a lógica atual (yields aprovados das etapas ativas) --------
-  const rty = useMemo(
-    () =>
-      rolledThroughputYield(
-        state.yields
-          .filter((y) => state.stages.find((s) => s.id === y.stageId)?.ativo)
-          .map((y) => y.valor),
-      ),
-    [state.yields, state.stages],
-  );
+  // -------- RTY por modelo (produto dos yields ativos daquele modelo) --------
+  const rtyPorModelo = useMemo(() => {
+    const out: Record<string, number | null> = {};
+    for (const p of state.products) {
+      const rates = state.yields
+        .filter((y) => y.modelId === p.id)
+        .filter((y) => state.stages.find((s) => s.id === y.stageId)?.ativo)
+        .map((y) => (y.valor !== null && y.valor > 0 ? y.valor : null));
+      out[p.id] = rolledThroughputYield(rates);
+    }
+    return out;
+  }, [state.yields, state.stages, state.products]);
+
+  // RTY exibido: menor entre modelos (mais restritivo) — coerente com o painel executivo.
+  const rty = useMemo(() => {
+    const vals = Object.values(rtyPorModelo);
+    if (vals.some((v) => v === null)) return null;
+    return Math.min(...(vals as number[]));
+  }, [rtyPorModelo]);
 
   const provisorios = state.yields.filter((y) => y.valor === null).length;
   const totalYields = state.yields.length;
 
-  // -------- Explosão reversa (lógica intacta) --------
-  const explosao = useMemo(
-    () => reverseExplode(totalDemandaHorizonte, state.stages, state.yields),
-    [totalDemandaHorizonte, state.stages, state.yields],
-  );
+  // -------- Explosão reversa por modelo, agregada por etapa --------
+  const explosao = useMemo(() => {
+    const demandaPorModelo: Record<string, number> = {};
+    for (const p of state.products) {
+      demandaPorModelo[p.id] = demandaFiltrada
+        .filter((d) => d.modelId === p.id)
+        .reduce((a, b) => a + b.demanda, 0);
+    }
+    const stageAcc = new Map<
+      string,
+      { stageName: string; ordem: number; entradaBruta: number; saidaAprovada: number; provisorio: boolean }
+    >();
+    let necessidadeInicial = 0;
+    let temProvisorio = false;
+    for (const p of state.products) {
+      const d = demandaPorModelo[p.id] ?? 0;
+      if (d <= 0) continue;
+      const exp = reverseExplode(d, state.stages, state.yields, p.id);
+      necessidadeInicial += exp.necessidadeInicial;
+      if (exp.temProvisorio) temProvisorio = true;
+      for (const r of exp.reconciliacao) {
+        const prev = stageAcc.get(r.stageId);
+        if (prev) {
+          prev.entradaBruta += r.entradaBruta;
+          prev.saidaAprovada += r.saidaAprovada;
+          prev.provisorio = prev.provisorio || r.provisorio;
+        } else {
+          stageAcc.set(r.stageId, {
+            stageName: r.stageName,
+            ordem: r.ordem,
+            entradaBruta: r.entradaBruta,
+            saidaAprovada: r.saidaAprovada,
+            provisorio: r.provisorio,
+          });
+        }
+      }
+    }
+    const reconciliacao = Array.from(stageAcc.entries())
+      .map(([stageId, v]) => ({ stageId, ...v }))
+      .sort((a, b) => a.ordem - b.ordem);
+    return { necessidadeInicial, temProvisorio, reconciliacao };
+  }, [demandaFiltrada, state.products, state.stages, state.yields]);
 
   // -------- Cards de estoque crítico: necessidade x saldo projetado simulado --------
   const stockCards = useMemo(() => {
