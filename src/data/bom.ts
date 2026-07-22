@@ -26,6 +26,8 @@ export const bom: BomLine[] = [
   line("full_valve", "sleeve", 9, "sleeves", "TR1P-55"),
   line("full_valve", "sutura_montagem", null, "stentless_assembly"),
   line("full_valve", "sutura_loading", null, "loading_sutures"),
+  line("full_valve", "fios", 0, "stentless_assembly"),
+  line("full_valve", "solucao", 0, "pericardio_prep"),
   line("full_valve", "solucao_tratamento", null, "pericardio_prep"),
   line("full_valve", "solucao_armazenagem", null, "storage"),
   line("full_valve", "embalagem_primaria", 1, "bioburden_pack"),

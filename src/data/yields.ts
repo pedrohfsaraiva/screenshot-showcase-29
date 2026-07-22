@@ -1,39 +1,44 @@
-import type { YieldParameter, SourceRef } from "@/domain/types";
+import type { YieldParameter, SourceRef, ModelId } from "@/domain/types";
 
 const src: SourceRef = {
   documento: "Parâmetros iniciais (provisório)",
   status: "provisorio",
 };
 
-// Todos os yields nascem null → DADO A CONFIRMAR.
-// O usuário aprova cada gate individualmente via slider e vinculação a fonte.
-const y = (stageId: string): YieldParameter => ({
-  id: stageId,
-  stageId,
-  valor: null,
-  tipoPerda: "sucata",
-  source: src,
-});
-
-export const yields: YieldParameter[] = [
-  y("pericardio_prep"),
-  y("leaflets"),
-  y("leaflet_matching"),
-  y("inner_skirt"),
-  y("sealing_atrial"),
-  y("sealing_ventricular"),
-  y("inner_stent_prep"),
-  y("outer_stent_prep"),
-  y("stentless_assembly"),
-  y("inner_valve_assembly"),
-  y("inner_bdc"),
-  y("sleeves"),
-  y("full_valve_assembly"),
-  y("sealings_final"),
-  y("dimensional_visual"),
-  y("loading_sutures"),
-  y("full_bdc"),
-  y("storage"),
-  y("bioburden_pack"),
-  y("final_pack"),
+const stageIds = [
+  "pericardio_prep",
+  "leaflets",
+  "leaflet_matching",
+  "inner_skirt",
+  "sealing_atrial",
+  "sealing_ventricular",
+  "inner_stent_prep",
+  "outer_stent_prep",
+  "stentless_assembly",
+  "inner_valve_assembly",
+  "inner_bdc",
+  "sleeves",
+  "full_valve_assembly",
+  "sealings_final",
+  "dimensional_visual",
+  "loading_sutures",
+  "full_bdc",
+  "storage",
+  "bioburden_pack",
+  "final_pack",
 ];
+
+const modelos: ModelId[] = ["TR1P-45", "TR1P-55"];
+
+// Yields agora são por (etapa, modelo) — componentes possuem taxas de perda
+// distintas conforme o tamanho da válvula. Todos nascem null → DADO A CONFIRMAR.
+export const yields: YieldParameter[] = stageIds.flatMap((stageId) =>
+  modelos.map<YieldParameter>((modelId) => ({
+    id: `${stageId}__${modelId}`,
+    stageId,
+    modelId,
+    valor: null,
+    tipoPerda: "sucata",
+    source: src,
+  })),
+);
