@@ -11,6 +11,7 @@ import { reverseExplode } from "@/engine/reverseExplosion";
 import { rolledThroughputYield } from "@/engine/yield";
 import { formatInt, formatPct } from "@/lib/format";
 import { Button } from "@/components/ui/button";
+import type { ModelId, YieldParameter } from "@/domain/types";
 
 export const Route = createFileRoute("/rota")({
   head: () => ({
@@ -19,7 +20,7 @@ export const Route = createFileRoute("/rota")({
       {
         name: "description",
         content:
-          "Pipeline visual de manufatura Topaz. Ajuste yields por gate e veja o impacto em tempo real na necessidade bruta e no RTY.",
+          "Pipeline visual de manufatura Topaz. Ajuste yields por gate e por modelo e veja o impacto em tempo real na necessidade bruta e no RTY.",
       },
     ],
   }),
@@ -29,26 +30,38 @@ export const Route = createFileRoute("/rota")({
 function RotaPage() {
   const { state, setYieldValue, setStageActive } = useScenario();
 
-  const totalDemanda = useMemo(
-    () => state.demand.reduce((a, b) => a + b.demanda, 0),
-    [state.demand],
-  );
-  const demandaReferencia = totalDemanda > 0 ? totalDemanda : 1000;
+  const demandaPorModelo = useMemo(() => {
+    const map: Record<string, number> = {};
+    for (const p of state.products) {
+      map[p.id] = state.demand
+        .filter((d) => d.modelId === p.id)
+        .reduce((a, d) => a + d.demanda, 0);
+    }
+    return map;
+  }, [state.demand, state.products]);
 
-  const explosao = useMemo(
-    () => reverseExplode(demandaReferencia, state.stages, state.yields),
-    [demandaReferencia, state.stages, state.yields],
-  );
+  const totalDemanda = Object.values(demandaPorModelo).reduce((a, b) => a + b, 0);
 
-  const rty = useMemo(
-    () =>
-      rolledThroughputYield(
-        state.yields
-          .filter((y) => state.stages.find((s) => s.id === y.stageId)?.ativo)
-          .map((y) => y.valor),
-      ),
-    [state.yields, state.stages],
-  );
+  const explosaoPorModelo = useMemo(() => {
+    const out: Record<string, ReturnType<typeof reverseExplode>> = {};
+    for (const p of state.products) {
+      const d = demandaPorModelo[p.id] || 1000;
+      out[p.id] = reverseExplode(d, state.stages, state.yields, p.id);
+    }
+    return out;
+  }, [state.products, state.stages, state.yields, demandaPorModelo]);
+
+  const rtyPorModelo = useMemo(() => {
+    const out: Record<string, number | null> = {};
+    for (const p of state.products) {
+      const rates = state.yields
+        .filter((y) => y.modelId === p.id)
+        .filter((y) => state.stages.find((s) => s.id === y.stageId)?.ativo)
+        .map((y) => (y.valor !== null && y.valor > 0 ? y.valor : null));
+      out[p.id] = rolledThroughputYield(rates);
+    }
+    return out;
+  }, [state.yields, state.stages, state.products]);
 
   const stagesSorted = [...state.stages].sort((a, b) => a.ordem - b.ordem);
 
@@ -59,24 +72,31 @@ function RotaPage() {
         subtitle={
           totalDemanda > 0
             ? `Necessidade calculada sobre a demanda cadastrada (${formatInt(totalDemanda)} válvulas).`
-            : "Referência de 1.000 válvulas (edite a demanda em Cenários para usar valores reais)."
+            : "Referência de 1.000 válvulas por modelo (edite a demanda em Cenários para usar valores reais)."
         }
         actions={
-          <div className="flex items-center gap-3 rounded-md border border-border bg-card px-3 py-1.5 text-xs">
-            <span className="text-muted-foreground">RTY global</span>
-            <span className="text-base font-semibold tabular-nums">
-              {rty === null ? "—" : formatPct(rty, 2)}
-            </span>
+          <div className="flex items-center gap-2">
+            {state.products.map((p) => (
+              <div
+                key={p.id}
+                className="flex items-center gap-2 rounded-md border border-border bg-card px-3 py-1.5 text-xs"
+              >
+                <span className="text-muted-foreground">RTY {p.id}</span>
+                <span className="text-sm font-semibold tabular-nums">
+                  {rtyPorModelo[p.id] === null ? "—" : formatPct(rtyPorModelo[p.id]!, 2)}
+                </span>
+              </div>
+            ))}
           </div>
         }
       />
       <div className="p-6 max-w-5xl">
         <ol className="relative border-l-2 border-primary/40 ml-4 space-y-4">
-          {stagesSorted.map((stage, idx) => {
-            const y = state.yields.find((yy) => yy.stageId === stage.id);
-            const rec = explosao.reconciliacao.find((r) => r.stageId === stage.id);
-            const provisorio = !y || y.valor === null;
-            const pct = y?.valor !== null && y?.valor !== undefined ? Math.round(y.valor * 100) : 0;
+          {stagesSorted.map((stage) => {
+            const yieldsStage = state.yields.filter((y) => y.stageId === stage.id);
+            const provisorio = yieldsStage.some(
+              (y) => y.valor === null || y.valor <= 0,
+            );
             return (
               <li key={stage.id} className="ml-6 relative">
                 <span className="absolute -left-[35px] top-4 flex h-6 w-6 items-center justify-center rounded-full ring-4 ring-background bg-primary text-primary-foreground text-[10px] font-bold">
@@ -91,7 +111,7 @@ function RotaPage() {
                       : "opacity-60"
                   }
                 >
-                  <CardContent className="p-4">
+                  <CardContent className="p-4 space-y-4">
                     <div className="flex items-start justify-between gap-4">
                       <div className="min-w-0">
                         <div className="flex flex-wrap items-center gap-2">
@@ -101,63 +121,34 @@ function RotaPage() {
                           </span>
                           {provisorio ? <ProvisionalBadge label="YIELD A CONFIRMAR" /> : null}
                         </div>
-                        <div className="mt-2 grid grid-cols-3 gap-3 text-xs">
-                          <Metric
-                            label="Entrada bruta"
-                            value={rec ? formatInt(rec.entradaBruta) : "—"}
-                            emphasis={idx === 0}
-                          />
-                          <Metric
-                            label="Saída aprovada"
-                            value={rec ? formatInt(rec.saidaAprovada) : "—"}
-                          />
-                          <Metric
-                            label="Perda"
-                            value={rec ? formatInt(rec.perdaTotal) : "—"}
-                            variant={rec && rec.perdaTotal > 0 ? "warning" : "muted"}
-                          />
-                        </div>
                       </div>
-                      <div className="flex flex-col items-end gap-2">
-                        <div className="flex items-center gap-2 text-xs">
-                          <span className="text-muted-foreground">Ativo</span>
-                          <Switch
-                            checked={stage.ativo}
-                            onCheckedChange={(v) => setStageActive(stage.id, v)}
-                          />
-                        </div>
-                        {y?.valor === null ? (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => setYieldValue(stage.id, 0.9)}
-                          >
-                            Iniciar em 90%
-                          </Button>
-                        ) : (
-                          <div className="flex items-center gap-1 text-xs text-success">
-                            <Check className="h-3 w-3" />
-                            <span>Yield definido</span>
-                          </div>
-                        )}
+                      <div className="flex items-center gap-2 text-xs">
+                        <span className="text-muted-foreground">Ativo</span>
+                        <Switch
+                          checked={stage.ativo}
+                          onCheckedChange={(v) => setStageActive(stage.id, v)}
+                        />
                       </div>
                     </div>
 
-                    <div className="mt-4 flex items-center gap-3">
-                      <CircleDot className="h-4 w-4 text-primary" />
-                      <div className="flex-1">
-                        <Slider
-                          value={[pct]}
-                          min={50}
-                          max={100}
-                          step={1}
-                          onValueChange={([v]) => setYieldValue(stage.id, v / 100)}
-                          disabled={!stage.ativo}
-                        />
-                      </div>
-                      <div className="w-16 text-right font-semibold tabular-nums text-sm">
-                        {y?.valor === null ? "—" : `${pct}%`}
-                      </div>
+                    <div className="grid gap-3 md:grid-cols-2">
+                      {state.products.map((p) => {
+                        const y = yieldsStage.find((yy) => yy.modelId === p.id);
+                        const rec = explosaoPorModelo[p.id]?.reconciliacao.find(
+                          (r) => r.stageId === stage.id,
+                        );
+                        return (
+                          <ModelYieldRow
+                            key={p.id}
+                            modelId={p.id}
+                            modelName={p.nome}
+                            y={y}
+                            rec={rec}
+                            active={stage.ativo}
+                            onChange={(v) => setYieldValue(stage.id, p.id, v)}
+                          />
+                        );
+                      })}
                     </div>
                   </CardContent>
                 </Card>
@@ -165,6 +156,80 @@ function RotaPage() {
             );
           })}
         </ol>
+      </div>
+    </div>
+  );
+}
+
+function ModelYieldRow({
+  modelId,
+  modelName,
+  y,
+  rec,
+  active,
+  onChange,
+}: {
+  modelId: ModelId;
+  modelName: string;
+  y?: YieldParameter;
+  rec?: {
+    entradaBruta: number;
+    saidaAprovada: number;
+    perdaTotal: number;
+  };
+  active: boolean;
+  onChange: (valor: number | null) => void;
+}) {
+  const val = y?.valor;
+  const pct = val !== null && val !== undefined ? Math.round(val * 100) : 0;
+  const provisorio = val === null || val === undefined;
+
+  return (
+    <div className="rounded-md border border-border/60 bg-muted/20 p-3">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <span className="rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold text-primary">
+            {modelId}
+          </span>
+          <span className="text-xs text-muted-foreground">{modelName}</span>
+        </div>
+        {provisorio ? (
+          <Button size="sm" variant="outline" onClick={() => onChange(0.9)}>
+            Iniciar em 90%
+          </Button>
+        ) : (
+          <div className="flex items-center gap-1 text-xs text-success">
+            <Check className="h-3 w-3" />
+            <span>Yield definido</span>
+          </div>
+        )}
+      </div>
+
+      <div className="mt-3 grid grid-cols-3 gap-2 text-[11px]">
+        <Metric label="Entrada" value={rec ? formatInt(rec.entradaBruta) : "—"} emphasis />
+        <Metric label="Saída" value={rec ? formatInt(rec.saidaAprovada) : "—"} />
+        <Metric
+          label="Perda"
+          value={rec ? formatInt(rec.perdaTotal) : "—"}
+          variant={rec && rec.perdaTotal > 0 ? "warning" : "muted"}
+        />
+      </div>
+
+      <div className="mt-3 flex items-center gap-3">
+        <CircleDot className="h-4 w-4 text-primary" />
+        <div className="flex-1">
+          <Slider
+            value={[pct]}
+            min={0}
+            max={100}
+            step={1}
+            onValueChange={([v]) => onChange(v / 100)}
+            disabled={!active}
+          />
+        </div>
+        <div className="w-14 text-right font-semibold tabular-nums text-sm">
+          {provisorio ? "—" : `${pct}%`}
+        </div>
       </div>
     </div>
   );
@@ -192,7 +257,7 @@ function Metric({
   return (
     <div>
       <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</div>
-      <div className={`mt-0.5 text-sm font-semibold tabular-nums ${color}`}>{value}</div>
+      <div className={`mt-0.5 text-xs font-semibold tabular-nums ${color}`}>{value}</div>
     </div>
   );
 }

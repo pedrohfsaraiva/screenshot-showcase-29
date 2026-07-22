@@ -11,6 +11,7 @@ import type {
   BomLine,
   DemandPeriod,
   Material,
+  ModelId,
   ProcessStage,
   ProductModel,
   YieldParameter,
@@ -23,9 +24,14 @@ import { bom as seedBom } from "@/data/bom";
 import { generatePeriods, seedDemand } from "@/data/demand";
 import { localStorageAdapter } from "@/lib/storage";
 
+export interface CapacityParam {
+  taxaPorDia: number | null; // unidades por dia por operador
+  operadores: number | null; // operadores disponíveis
+}
+
 interface ScenarioState {
   scenarioId: string;
-  baseDate: string; // YYYY-MM
+  baseDate: string;
   periodos: string[];
   products: ProductModel[];
   stages: ProcessStage[];
@@ -34,18 +40,23 @@ interface ScenarioState {
   bom: BomLine[];
   demand: DemandPeriod[];
   viewMode: "mensal" | "anual";
+  capacity: Record<string, CapacityParam>;
 }
 
 interface ScenarioApi {
   state: ScenarioState;
-  setYieldValue: (stageId: string, valor: number | null) => void;
+  setYieldValue: (stageId: string, modelId: ModelId, valor: number | null) => void;
   setStageActive: (stageId: string, ativo: boolean) => void;
-  setDemand: (modelId: DemandPeriod["modelId"], periodo: string, demanda: number) => void;
-  setDemandBulk: (
-    modelId: DemandPeriod["modelId"],
-    updates: Record<string, number>,
-  ) => void;
+  setDemand: (modelId: ModelId, periodo: string, demanda: number) => void;
+  setDemandBulk: (modelId: ModelId, updates: Record<string, number>) => void;
   setViewMode: (v: "mensal" | "anual") => void;
+  setBomQty: (index: number, qtyPer: number | null) => void;
+  setMaterialField: (
+    id: string,
+    field: "custoCentavos" | "leadTimeMeses",
+    value: number | null,
+  ) => void;
+  setCapacity: (stageId: string, patch: Partial<CapacityParam>) => void;
   resetToSeed: () => void;
 }
 
@@ -68,6 +79,7 @@ function defaultState(): ScenarioState {
     bom: seedBom,
     demand: seedDemand(periodos),
     viewMode: "mensal",
+    capacity: {},
   };
 }
 
@@ -78,7 +90,8 @@ export function ScenarioProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const persisted = localStorageAdapter.load<ScenarioState>(STORAGE_KEY);
     if (persisted && persisted.periodos && persisted.stages) {
-      setState(persisted);
+      // Compat: garante campos novos após updates de schema.
+      setState({ ...defaultState(), ...persisted, capacity: persisted.capacity ?? {} });
     }
     setHydrated(true);
   }, []);
@@ -87,12 +100,36 @@ export function ScenarioProvider({ children }: { children: ReactNode }) {
     if (hydrated) localStorageAdapter.save(STORAGE_KEY, state);
   }, [state, hydrated]);
 
-  const setYieldValue = useCallback((stageId: string, valor: number | null) => {
-    setState((s) => ({
-      ...s,
-      yields: s.yields.map((y) => (y.stageId === stageId ? { ...y, valor } : y)),
-    }));
-  }, []);
+  const setYieldValue = useCallback(
+    (stageId: string, modelId: ModelId, valor: number | null) => {
+      setState((s) => {
+        const idx = s.yields.findIndex(
+          (y) => y.stageId === stageId && y.modelId === modelId,
+        );
+        if (idx === -1) {
+          // Cria caso não exista (migração de dados antigos sem modelId).
+          return {
+            ...s,
+            yields: [
+              ...s.yields,
+              {
+                id: `${stageId}__${modelId}`,
+                stageId,
+                modelId,
+                valor,
+                tipoPerda: "sucata",
+                source: { documento: "Edição usuário", status: "provisorio" },
+              },
+            ],
+          };
+        }
+        const next = s.yields.slice();
+        next[idx] = { ...next[idx], valor };
+        return { ...s, yields: next };
+      });
+    },
+    [],
+  );
 
   const setStageActive = useCallback((stageId: string, ativo: boolean) => {
     setState((s) => ({
@@ -102,7 +139,7 @@ export function ScenarioProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const setDemand = useCallback(
-    (modelId: DemandPeriod["modelId"], periodo: string, demanda: number) => {
+    (modelId: ModelId, periodo: string, demanda: number) => {
       setState((s) => ({
         ...s,
         demand: s.demand.map((d) =>
@@ -114,7 +151,7 @@ export function ScenarioProvider({ children }: { children: ReactNode }) {
   );
 
   const setDemandBulk = useCallback(
-    (modelId: DemandPeriod["modelId"], updates: Record<string, number>) => {
+    (modelId: ModelId, updates: Record<string, number>) => {
       setState((s) => ({
         ...s,
         demand: s.demand.map((d) =>
@@ -131,11 +168,63 @@ export function ScenarioProvider({ children }: { children: ReactNode }) {
     setState((s) => ({ ...s, viewMode: v }));
   }, []);
 
+  const setBomQty = useCallback((index: number, qtyPer: number | null) => {
+    setState((s) => ({
+      ...s,
+      bom: s.bom.map((b, i) => (i === index ? { ...b, qtyPer } : b)),
+    }));
+  }, []);
+
+  const setMaterialField = useCallback(
+    (id: string, field: "custoCentavos" | "leadTimeMeses", value: number | null) => {
+      setState((s) => ({
+        ...s,
+        materials: s.materials.map((m) => (m.id === id ? { ...m, [field]: value } : m)),
+      }));
+    },
+    [],
+  );
+
+  const setCapacity = useCallback(
+    (stageId: string, patch: Partial<CapacityParam>) => {
+      setState((s) => {
+        const prev = s.capacity[stageId] ?? { taxaPorDia: null, operadores: null };
+        return {
+          ...s,
+          capacity: { ...s.capacity, [stageId]: { ...prev, ...patch } },
+        };
+      });
+    },
+    [],
+  );
+
   const resetToSeed = useCallback(() => setState(defaultState()), []);
 
   const api = useMemo<ScenarioApi>(
-    () => ({ state, setYieldValue, setStageActive, setDemand, setDemandBulk, setViewMode, resetToSeed }),
-    [state, setYieldValue, setStageActive, setDemand, setDemandBulk, setViewMode, resetToSeed],
+    () => ({
+      state,
+      setYieldValue,
+      setStageActive,
+      setDemand,
+      setDemandBulk,
+      setViewMode,
+      setBomQty,
+      setMaterialField,
+      setCapacity,
+      resetToSeed,
+    }),
+    [
+      state,
+      setYieldValue,
+      setStageActive,
+      setDemand,
+      setDemandBulk,
+      setViewMode,
+      setBomQty,
+      setMaterialField,
+      setCapacity,
+      resetToSeed,
+    ],
   );
 
   return <ScenarioContext.Provider value={api}>{children}</ScenarioContext.Provider>;
