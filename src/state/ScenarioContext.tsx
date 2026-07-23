@@ -62,11 +62,11 @@ interface ScenarioApi {
 
 const ScenarioContext = createContext<ScenarioApi | null>(null);
 
-const STORAGE_KEY = "scenario-default";
+const STORAGE_KEY = "scenario-default-v2";
 
 function defaultState(): ScenarioState {
-  const today = new Date();
-  const baseDate = `${today.getUTCFullYear()}-${String(today.getUTCMonth() + 1).padStart(2, "0")}`;
+  // Horizonte fixo: 3 anos calendário iniciando em Janeiro/2027.
+  const baseDate = "2027-01";
   const periodos = generatePeriods(baseDate, 36);
   return {
     scenarioId: "default",
