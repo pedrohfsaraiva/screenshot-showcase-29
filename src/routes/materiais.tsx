@@ -44,7 +44,7 @@ function MateriaisPage() {
                   <TableHead>Categoria</TableHead>
                   <TableHead>Unidade</TableHead>
                   <TableHead className="text-right">Custo unit. (R$)</TableHead>
-                  <TableHead className="text-right">Lead time (meses)</TableHead>
+                  <TableHead className="text-right">Lead time (h)</TableHead>
                   <TableHead className="text-right">MOQ</TableHead>
                   <TableHead className="text-right">Múltiplo</TableHead>
                   <TableHead>Reutilizável</TableHead>
