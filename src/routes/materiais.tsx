@@ -32,7 +32,7 @@ function MateriaisPage() {
     <div>
       <PageHeader
         title="Materiais"
-        subtitle="Cadastro mestre. Edite custo unitário (R$) e lead time (meses) direto na tabela."
+        subtitle="Cadastro mestre. Edite custo unitário (R$) e lead time (h) direto na tabela."
       />
       <div className="p-6">
         <Card>
@@ -44,7 +44,7 @@ function MateriaisPage() {
                   <TableHead>Categoria</TableHead>
                   <TableHead>Unidade</TableHead>
                   <TableHead className="text-right">Custo unit. (R$)</TableHead>
-                  <TableHead className="text-right">Lead time (meses)</TableHead>
+                  <TableHead className="text-right">Lead time (h)</TableHead>
                   <TableHead className="text-right">MOQ</TableHead>
                   <TableHead className="text-right">Múltiplo</TableHead>
                   <TableHead>Reutilizável</TableHead>

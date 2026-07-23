@@ -16,7 +16,6 @@ import {
   AlertTriangle,
   CheckCircle2,
   Factory,
-  PackageSearch,
   Plus,
   TrendingUp,
 } from "lucide-react";
@@ -36,9 +35,8 @@ import { Label } from "@/components/ui/label";
 import { useScenario } from "@/state/ScenarioContext";
 import { rolledThroughputYield } from "@/engine/yield";
 import { reverseExplode } from "@/engine/reverseExplosion";
-import { formatInt, formatPct, formatPeriod } from "@/lib/format";
+import { formatInt, formatPeriod } from "@/lib/format";
 import type { ModelId } from "@/domain/types";
-import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -47,7 +45,7 @@ export const Route = createFileRoute("/")({
       {
         name: "description",
         content:
-          "KPIs de demanda, alertas de estoque crítico, RTY e qualidade dos dados.",
+          "Painel executivo de previsão de demanda, RTY e necessidade bruta por gate.",
       },
     ],
   }),
@@ -55,67 +53,31 @@ export const Route = createFileRoute("/")({
 });
 
 type ModelFilter = "all" | ModelId;
+type YearFilter = "all" | "Y1" | "Y2" | "Y3";
 
-// Hash determinístico simples para simular saldo projetado por material.
-function hashRatio(seed: string): number {
-  let h = 2166136261;
-  for (let i = 0; i < seed.length; i++) {
-    h ^= seed.charCodeAt(i);
-    h = Math.imul(h, 16777619);
-  }
-  // 0.05 a 0.85
-  return 0.05 + (Math.abs(h) % 800) / 1000;
-}
-
-function stockTone(ratio: number) {
-  if (ratio < 0.2)
-    return {
-      badge: "Crítico",
-      text: "text-destructive",
-      bg: "bg-destructive/10",
-      border: "border-destructive/40",
-      bar: "bg-destructive",
-    };
-  if (ratio < 0.4)
-    return {
-      badge: "Atenção",
-      text: "text-warning",
-      bg: "bg-warning/10",
-      border: "border-warning/40",
-      bar: "bg-warning",
-    };
-  return {
-    badge: "Saudável",
-    text: "text-success",
-    bg: "bg-success/10",
-    border: "border-success/40",
-    bar: "bg-success",
-  };
+// Trunca sem arredondar para cima; usado no RTY.
+function truncPct(v: number, digits: number): string {
+  const factor = Math.pow(10, digits);
+  const truncated = Math.trunc(v * 100 * factor) / factor;
+  return `${truncated.toFixed(digits)}%`;
 }
 
 function Dashboard() {
   const { state, setViewMode } = useScenario();
 
-  // -------- Filtros reativos (estado local, não persistido) --------
   const [modelo, setModelo] = useState<ModelFilter>("all");
-  const [dataInicio, setDataInicio] = useState<string>(state.periodos[0] ?? "");
-  const [dataFim, setDataFim] = useState<string>(
-    state.periodos[state.periodos.length - 1] ?? "",
-  );
+  const [ano, setAno] = useState<YearFilter>("all");
 
   const periodosFiltrados = useMemo(() => {
-    const ini = state.periodos.indexOf(dataInicio);
-    const fim = state.periodos.indexOf(dataFim);
-    if (ini === -1 || fim === -1 || ini > fim) return state.periodos;
-    return state.periodos.slice(ini, fim + 1);
-  }, [state.periodos, dataInicio, dataFim]);
-
+    if (ano === "all") return state.periodos;
+    const idx = ano === "Y1" ? 0 : ano === "Y2" ? 1 : 2;
+    return state.periodos.slice(idx * 12, idx * 12 + 12);
+  }, [state.periodos, ano]);
 
   const demandaFiltrada = useMemo(() => {
+    const setP = new Set(periodosFiltrados);
     return state.demand.filter(
-      (d) =>
-        (modelo === "all" || d.modelId === modelo) &&
-        periodosFiltrados.includes(d.periodo),
+      (d) => (modelo === "all" || d.modelId === modelo) && setP.has(d.periodo),
     );
   }, [state.demand, modelo, periodosFiltrados]);
 
@@ -130,7 +92,7 @@ function Dashboard() {
 
   const totalDemandaHorizonte = demandTotals.reduce((a, b) => a + b.demanda, 0);
 
-  // -------- RTY por modelo (produto dos yields ativos daquele modelo) --------
+  // RTY por modelo — nunca fazemos média entre modelos.
   const rtyPorModelo = useMemo(() => {
     const out: Record<string, number | null> = {};
     for (const p of state.products) {
@@ -143,32 +105,26 @@ function Dashboard() {
     return out;
   }, [state.yields, state.stages, state.products]);
 
-  // RTY exibido: menor entre modelos (mais restritivo) — coerente com o painel executivo.
-  const rty = useMemo(() => {
-    const vals = Object.values(rtyPorModelo);
-    if (vals.some((v) => v === null)) return null;
-    return Math.min(...(vals as number[]));
-  }, [rtyPorModelo]);
-
   const provisorios = state.yields.filter((y) => y.valor === null).length;
   const totalYields = state.yields.length;
 
-  // -------- Explosão reversa por modelo, agregada por etapa --------
   const explosao = useMemo(() => {
-    const demandaPorModelo: Record<string, number> = {};
-    for (const p of state.products) {
-      demandaPorModelo[p.id] = demandaFiltrada
-        .filter((d) => d.modelId === p.id)
-        .reduce((a, b) => a + b.demanda, 0);
-    }
     const stageAcc = new Map<
       string,
-      { stageName: string; ordem: number; entradaBruta: number; saidaAprovada: number; provisorio: boolean }
+      {
+        stageName: string;
+        ordem: number;
+        entradaBruta: number;
+        saidaAprovada: number;
+        provisorio: boolean;
+      }
     >();
     let necessidadeInicial = 0;
     let temProvisorio = false;
     for (const p of state.products) {
-      const d = demandaPorModelo[p.id] ?? 0;
+      const d = demandaFiltrada
+        .filter((x) => x.modelId === p.id)
+        .reduce((a, b) => a + b.demanda, 0);
       if (d <= 0) continue;
       const exp = reverseExplode(d, state.stages, state.yields, p.id);
       necessidadeInicial += exp.necessidadeInicial;
@@ -196,51 +152,16 @@ function Dashboard() {
     return { necessidadeInicial, temProvisorio, reconciliacao };
   }, [demandaFiltrada, state.products, state.stages, state.yields]);
 
-  // -------- Cards de estoque crítico: necessidade x saldo projetado simulado --------
-  const stockCards = useMemo(() => {
-    // Consolida BOM por materialId respeitando o filtro de modelo.
-    const needByMaterial = new Map<string, number>();
-    for (const l of state.bom) {
-      if (!l.qtyPer) continue;
-      if (l.modelId && modelo !== "all" && l.modelId !== modelo) continue;
-      // Quando a linha é por modelo, aplica só sobre a demanda daquele modelo.
-      const demandaBase = l.modelId
-        ? demandaFiltrada
-            .filter((d) => d.modelId === l.modelId)
-            .reduce((a, b) => a + b.demanda, 0)
-        : totalDemandaHorizonte;
-      const nec = demandaBase * l.qtyPer;
-      needByMaterial.set(
-        l.childId,
-        (needByMaterial.get(l.childId) ?? 0) + nec,
-      );
-    }
-
-    const cards = state.materials
-      .filter((m) => needByMaterial.has(m.id))
-      .map((m) => {
-        const ideal = Math.max(1, Math.ceil(needByMaterial.get(m.id) ?? 0));
-        // Saldo projetado: mistura de hash determinístico + estoque de segurança.
-        const projetado = Math.round(
-          ideal * hashRatio(m.id + modelo) + m.estoqueSeguranca,
-        );
-        const ratio = ideal > 0 ? projetado / ideal : 1;
-        return { material: m, ideal, projetado, ratio };
-      })
-      .sort((a, b) => a.ratio - b.ratio);
-
-    return cards.slice(0, 6);
-  }, [state.bom, state.materials, demandaFiltrada, totalDemandaHorizonte, modelo]);
-
-  const criticos = stockCards.filter((c) => c.ratio < 0.2).length;
-
   const chartData = useMemo(() => {
     if (state.viewMode === "anual") {
       const buckets: { label: string; demanda: number }[] = [];
       demandTotals.forEach((d, i) => {
-        const idx = Math.floor(i / 12);
-        if (!buckets[idx]) buckets[idx] = { label: `Y${idx + 1}`, demanda: 0 };
-        buckets[idx].demanda += d.demanda;
+        const globalIdx = state.periodos.indexOf(d.periodo);
+        const yr = Math.floor(globalIdx / 12);
+        const label = `Y${yr + 1}`;
+        const found = buckets.find((b) => b.label === label);
+        if (found) found.demanda += d.demanda;
+        else buckets.push({ label, demanda: d.demanda });
       });
       return buckets.map((b) => ({ periodo: b.label, demanda: b.demanda }));
     }
@@ -248,13 +169,13 @@ function Dashboard() {
       periodo: formatPeriod(d.periodo),
       demanda: d.demanda,
     }));
-  }, [demandTotals, state.viewMode]);
+  }, [demandTotals, state.viewMode, state.periodos]);
 
   return (
     <div>
       <PageHeader
         title="Visão Geral"
-        subtitle="Painel executivo com alertas de estoque, RTY e projeção de demanda."
+        subtitle="Painel executivo · 3 anos calendário (2027 · 2028 · 2029) — previsão de necessidades."
         actions={
           <div className="flex items-center gap-2">
             <Select
@@ -279,11 +200,11 @@ function Dashboard() {
         }
       />
 
-      {/* -------- Barra de filtros reativos -------- */}
+      {/* Filtros: apenas Modelo e Ano */}
       <div className="px-8 pt-4">
         <Card className="border-border/60">
           <CardContent className="p-6">
-            <div className="grid gap-5 md:grid-cols-3">
+            <div className="grid gap-5 md:grid-cols-2">
               <FilterField label="Modelo da válvula">
                 <Select value={modelo} onValueChange={(v) => setModelo(v as ModelFilter)}>
                   <SelectTrigger>
@@ -300,32 +221,16 @@ function Dashboard() {
                 </Select>
               </FilterField>
 
-              <FilterField label="Data inicial">
-                <Select value={dataInicio} onValueChange={setDataInicio}>
+              <FilterField label="Período">
+                <Select value={ano} onValueChange={(v) => setAno(v as YearFilter)}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {state.periodos.map((p) => (
-                      <SelectItem key={p} value={p}>
-                        {formatPeriod(p)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </FilterField>
-
-              <FilterField label="Data final">
-                <Select value={dataFim} onValueChange={setDataFim}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {state.periodos.map((p) => (
-                      <SelectItem key={p} value={p}>
-                        {formatPeriod(p)}
-                      </SelectItem>
-                    ))}
+                    <SelectItem value="all">3 anos (2027–2029)</SelectItem>
+                    <SelectItem value="Y1">Ano 1 · 2027</SelectItem>
+                    <SelectItem value="Y2">Ano 2 · 2028</SelectItem>
+                    <SelectItem value="Y3">Ano 3 · 2029</SelectItem>
                   </SelectContent>
                 </Select>
               </FilterField>
@@ -334,102 +239,15 @@ function Dashboard() {
         </Card>
       </div>
 
-      {/* -------- Cards de estoque crítico -------- */}
-      <div className="px-8 pt-8">
-        <div className="mb-4 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <PackageSearch className="h-4 w-4 text-primary" />
-            <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-              Estoque crítico
-            </h2>
-          </div>
-          <span className="text-xs text-muted-foreground">
-            {criticos > 0
-              ? `${criticos} insumo(s) em nível crítico`
-              : "Todos os insumos monitorados dentro do previsto"}
-          </span>
-        </div>
-        <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-          {stockCards.map((c) => {
-            const tone = stockTone(c.ratio);
-            const pct = Math.min(100, Math.round(c.ratio * 100));
-            return (
-              <Card
-                key={c.material.id}
-                className={cn("border transition-colors", tone.border, tone.bg)}
-              >
-                <CardContent className="p-5">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <div className="truncate text-sm font-medium text-foreground">
-                        {c.material.descricao}
-                      </div>
-                      <div className="mt-0.5 text-xs text-muted-foreground">
-                        {c.material.categoria} · {c.material.unidade}
-                      </div>
-                    </div>
-                    <span
-                      className={cn(
-                        "shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold",
-                        tone.text,
-                        tone.bg,
-                      )}
-                    >
-                      {tone.badge}
-                    </span>
-                  </div>
-                  <div className="mt-4 flex items-baseline justify-between gap-4 tabular-nums">
-                    <span className={cn("text-2xl font-semibold", tone.text)}>
-                      {pct}%
-                    </span>
-                    <span className="text-right text-xs text-muted-foreground">
-                      <span className="block">
-                        Projetado:{" "}
-                        <span className="text-foreground">{formatInt(c.projetado)}</span>
-                      </span>
-                      <span className="block">
-                        Ideal:{" "}
-                        <span className="text-foreground">{formatInt(c.ideal)}</span>
-                      </span>
-                    </span>
-                  </div>
-                  <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-muted">
-                    <div
-                      className={cn("h-full transition-all", tone.bar)}
-                      style={{ width: `${pct}%` }}
-                    />
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
-          {stockCards.length === 0 ? (
-            <p className="col-span-full text-sm text-muted-foreground">
-              Sem demanda cadastrada — nenhum insumo para monitorar.
-            </p>
-          ) : null}
-        </div>
-      </div>
-
-      {/* -------- KPIs -------- */}
-      <div className="px-8 pt-10 pb-2 grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+      {/* KPIs */}
+      <div className="px-8 pt-8 pb-2 grid gap-5 md:grid-cols-2 xl:grid-cols-4">
         <Kpi
           icon={<TrendingUp className="h-4 w-4" />}
-          label="Demanda no horizonte"
+          label="Demanda no período"
           value={formatInt(totalDemandaHorizonte)}
-          hint={`${periodosFiltrados.length} períodos · ${modelo === "all" ? "todos os modelos" : modelo}`}
+          hint={`${periodosFiltrados.length} meses · ${modelo === "all" ? "todos os modelos" : modelo}`}
         />
-        <Kpi
-          icon={<CheckCircle2 className="h-4 w-4" />}
-          label="RTY acumulado"
-          value={rty === null ? "—" : formatPct(rty, 2)}
-          hint={
-            rty === null
-              ? "Yields provisórios impedem o cálculo"
-              : "Produto dos gates ativos"
-          }
-          alert={rty === null}
-        />
+        <RtyKpi modelo={modelo} rtyPorModelo={rtyPorModelo} products={state.products} />
         <Kpi
           icon={<Factory className="h-4 w-4" />}
           label="Pericárdios estimados"
@@ -446,7 +264,7 @@ function Dashboard() {
         />
       </div>
 
-      {/* -------- Gráficos -------- */}
+      {/* Gráficos */}
       <div className="px-8 pt-8 pb-10 grid gap-6 lg:grid-cols-2">
         <Card>
           <CardHeader>
@@ -544,18 +362,8 @@ function Dashboard() {
                     }
                   />
                   <Legend wrapperStyle={{ fontSize: 12 }} />
-                  <Bar
-                    dataKey="entradaBruta"
-                    name="Entrada bruta"
-                    fill="var(--color-chart-1)"
-                    minPointSize={0}
-                  />
-                  <Bar
-                    dataKey="saidaAprovada"
-                    name="Saída aprovada"
-                    fill="var(--color-chart-3)"
-                    minPointSize={0}
-                  />
+                  <Bar dataKey="entradaBruta" name="Entrada bruta" fill="var(--color-chart-1)" minPointSize={0} />
+                  <Bar dataKey="saidaAprovada" name="Saída aprovada" fill="var(--color-chart-3)" minPointSize={0} />
                 </BarChart>
               </ResponsiveContainer>
               {explosao.reconciliacao.every(
@@ -614,6 +422,73 @@ function Kpi({
           {value}
         </div>
         {hint ? <div className="mt-1 text-xs text-muted-foreground">{hint}</div> : null}
+      </CardContent>
+    </Card>
+  );
+}
+
+function RtyKpi({
+  modelo,
+  rtyPorModelo,
+  products,
+}: {
+  modelo: ModelFilter;
+  rtyPorModelo: Record<string, number | null>;
+  products: { id: ModelId; nome: string }[];
+}) {
+  // Nunca exibimos média entre modelos: rotas e perdas são distintas.
+  if (modelo === "all") {
+    return (
+      <Card>
+        <CardContent className="p-5">
+          <div className="flex items-center justify-between text-muted-foreground">
+            <span className="text-xs uppercase tracking-wider">RTY por modelo</span>
+            <span className="text-primary">
+              <CheckCircle2 className="h-4 w-4" />
+            </span>
+          </div>
+          <div className="mt-2 space-y-1">
+            {products.map((p) => {
+              const v = rtyPorModelo[p.id];
+              return (
+                <div
+                  key={p.id}
+                  className="flex items-baseline justify-between text-sm tabular-nums"
+                >
+                  <span className="text-xs text-muted-foreground">{p.id}</span>
+                  <span className="text-lg font-semibold">
+                    {v === null ? "—" : truncPct(v, 3)}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+          <div className="mt-2 text-xs text-muted-foreground">
+            Selecione um modelo para consolidar
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+  const v = rtyPorModelo[modelo];
+  const alert = v === null;
+  return (
+    <Card className={alert ? "border-warning/40" : undefined}>
+      <CardContent className="p-5">
+        <div className="flex items-center justify-between text-muted-foreground">
+          <span className="text-xs uppercase tracking-wider">RTY · {modelo}</span>
+          <span className={alert ? "text-warning" : "text-primary"}>
+            <CheckCircle2 className="h-4 w-4" />
+          </span>
+        </div>
+        <div className="mt-2 text-2xl font-semibold tabular-nums text-right">
+          {v === null ? "—" : truncPct(v, 3)}
+        </div>
+        <div className="mt-1 text-xs text-muted-foreground">
+          {v === null
+            ? "Yields provisórios impedem o cálculo"
+            : "Produto dos gates ativos · truncado em 3 casas"}
+        </div>
       </CardContent>
     </Card>
   );
