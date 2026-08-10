@@ -1,6 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo } from "react";
-import { Check, CircleDot } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Check, CircleDot, AlertTriangle, RefreshCw, Database } from "lucide-react";
+import { useRendimentos } from "@/hooks/useRendimentos";
+import { mapRendimentos, isDefasado, ETAPA_TO_STAGE } from "@/lib/rendimentos";
 import { Card, CardContent } from "@/components/ui/card";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
@@ -28,7 +30,22 @@ export const Route = createFileRoute("/rota")({
 });
 
 function RotaPage() {
-  const { state, setYieldValue, setStageActive } = useScenario();
+  const { state, setYieldValue, setStageActive, applyYieldsFromDb } = useScenario();
+  const { rows, loading, error, reload } = useRendimentos();
+  const [syncMsg, setSyncMsg] = useState<string | null>(null);
+
+  const mapeados = useMemo(() => mapRendimentos(rows), [rows]);
+  const defasados = rows.filter(isDefasado).length;
+
+  const sincronizar = () => {
+    const n = applyYieldsFromDb(mapeados, "Banco · fato_rendimentos");
+    setSyncMsg(
+      n === 0
+        ? "Nenhum rendimento importado disponível para as etapas da rota."
+        : `${n} yield(s) atualizados a partir do banco de rendimentos.`,
+    );
+  };
+
 
   const demandaPorModelo = useMemo(() => {
     const map: Record<string, number> = {};
@@ -90,8 +107,42 @@ function RotaPage() {
           </div>
         }
       />
-      <div className="p-6 max-w-5xl">
+      <div className="p-6 max-w-5xl space-y-5">
+        <Card className="border-primary/30">
+          <CardContent className="flex flex-wrap items-center justify-between gap-4 p-4">
+            <div className="flex items-start gap-3">
+              <Database className="mt-0.5 h-4 w-4 text-primary" />
+              <div className="text-xs">
+                <div className="text-sm font-semibold">Rendimentos do banco</div>
+                <div className="text-muted-foreground">
+                  {loading
+                    ? "Carregando base de rendimentos…"
+                    : error
+                      ? `Erro ao ler o banco: ${error}`
+                      : `${mapeados.length} par(es) etapa×modelo disponíveis · ${defasados} componente(s) pendente(s)/desatualizado(s).`}
+                </div>
+                {syncMsg ? <div className="mt-1 text-primary">{syncMsg}</div> : null}
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              {defasados > 0 ? (
+                <span className="flex items-center gap-1 text-xs text-warning">
+                  <AlertTriangle className="h-3 w-3" /> dados defasados (&gt;30 dias)
+                </span>
+              ) : null}
+              <Button variant="outline" size="sm" onClick={() => void reload()}>
+                <RefreshCw className="mr-2 h-4 w-4" />
+                Recarregar
+              </Button>
+              <Button size="sm" onClick={sincronizar} disabled={mapeados.length === 0}>
+                Sincronizar yields
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
         <ol className="relative border-l-2 border-primary/40 ml-4 space-y-4">
+
           {stagesSorted.map((stage) => {
             const yieldsStage = state.yields.filter((y) => y.stageId === stage.id);
             const provisorio = yieldsStage.some(
@@ -120,6 +171,11 @@ function RotaPage() {
                             {stage.tipo}
                           </span>
                           {provisorio ? <ProvisionalBadge label="YIELD A CONFIRMAR" /> : null}
+                          {Object.values(ETAPA_TO_STAGE).includes(stage.id) ? (
+                            <span className="flex items-center gap-1 rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary">
+                              <Database className="h-3 w-3" /> Banco
+                            </span>
+                          ) : null}
                         </div>
                       </div>
                       <div className="flex items-center gap-2 text-xs">
