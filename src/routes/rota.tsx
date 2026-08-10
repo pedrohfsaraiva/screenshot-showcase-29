@@ -1,6 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo } from "react";
-import { Check, CircleDot } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Check, CircleDot, AlertTriangle, RefreshCw, Database } from "lucide-react";
+import { useRendimentos } from "@/hooks/useRendimentos";
+import { mapRendimentos, isDefasado, ETAPA_TO_STAGE } from "@/lib/rendimentos";
 import { Card, CardContent } from "@/components/ui/card";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
