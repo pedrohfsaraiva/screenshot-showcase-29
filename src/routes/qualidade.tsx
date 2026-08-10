@@ -3,6 +3,14 @@ import { AlertTriangle, CheckCircle2 } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useScenario } from "@/state/ScenarioContext";
+import { useRendimentos } from "@/hooks/useRendimentos";
+import {
+  ETAPA_RTY,
+  ETAPA_TO_STAGE,
+  LIMITE_DIAS_DEFASAGEM,
+  isDefasado,
+  mapRendimentos,
+} from "@/lib/rendimentos";
 
 export const Route = createFileRoute("/qualidade")({
   head: () => ({
@@ -16,6 +24,10 @@ export const Route = createFileRoute("/qualidade")({
 
 function QualidadePage() {
   const { state } = useScenario();
+  const { rows, loading, error } = useRendimentos();
+
+  const mapeados = mapRendimentos(rows);
+  const stagesComBanco = new Set(mapeados.map((m) => m.stageId));
 
   const findings: { severidade: "alta" | "media"; mensagem: string }[] = [];
 
@@ -45,11 +57,47 @@ function QualidadePage() {
     }
   });
 
+  rows.forEach((r) => {
+    if (r.rendimento === null) {
+      findings.push({
+        severidade: "alta",
+        mensagem: `Sem rendimento importado no banco: ${r.identificacao} (${r.etapa_correspondente})`,
+      });
+      return;
+    }
+    if (isDefasado(r)) {
+      findings.push({
+        severidade: "alta",
+        mensagem: `Pendente/Desatualizado (${r.dias_desde_atualizacao} dias > ${LIMITE_DIAS_DEFASAGEM}): ${r.identificacao}`,
+      });
+    }
+    const etapa = r.etapa_correspondente.trim();
+    if (!ETAPA_TO_STAGE[etapa] && etapa !== ETAPA_RTY) {
+      findings.push({
+        severidade: "media",
+        mensagem: `Componente do banco sem etapa correspondente na rota: ${r.identificacao} → "${etapa}"`,
+      });
+    }
+  });
+  state.stages
+    .filter((st) => st.ativo && Object.values(ETAPA_TO_STAGE).includes(st.id))
+    .forEach((st) => {
+      if (!stagesComBanco.has(st.id)) {
+        findings.push({
+          severidade: "media",
+          mensagem: `Etapa mapeada no banco mas ainda sem rendimento aplicável: ${st.nome}`,
+        });
+      }
+    });
+  if (error) {
+    findings.push({ severidade: "alta", mensagem: `Falha ao ler o banco de rendimentos: ${error}` });
+  }
+
   return (
     <div>
       <PageHeader
         title="Qualidade dos Dados"
-        subtitle="Nenhum lote pode ser marcado como 'pronto para compra' enquanto houver premissas críticas não aprovadas."
+        subtitle={`Inclui a base de rendimentos do banco (limite de defasagem: ${LIMITE_DIAS_DEFASAGEM} dias).${loading ? " Carregando rendimentos…" : ""}`}
       />
       <div className="p-6 grid gap-4">
         <Card>
