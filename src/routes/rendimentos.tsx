@@ -114,7 +114,7 @@ function RendimentosPage() {
           new Date().toISOString().slice(0, 10),
       }))
       .filter(
-        (r) =>
+        (r): r is typeof r & { rendimento: number } =>
           Number.isInteger(r.id_componente) &&
           r.nome_indicador.length > 0 &&
           r.rendimento !== null,
