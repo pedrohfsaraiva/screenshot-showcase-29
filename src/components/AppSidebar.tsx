@@ -9,6 +9,7 @@ import {
   ShieldCheck,
   Settings,
   ClipboardList,
+  Database,
 } from "lucide-react";
 import {
   Sidebar,
@@ -29,6 +30,7 @@ const items = [
   { title: "MRP Líquida", url: "/mrp", icon: ClipboardList },
   { title: "Capacidade", url: "/capacidade", icon: Factory },
   { title: "Custos", url: "/custos", icon: DollarSign },
+  { title: "Rendimentos (DB)", url: "/rendimentos", icon: Database },
   { title: "Qualidade dos Dados", url: "/qualidade", icon: ShieldCheck },
   { title: "Cenários", url: "/cenarios", icon: Settings },
 ];
