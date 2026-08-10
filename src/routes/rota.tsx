@@ -171,6 +171,11 @@ function RotaPage() {
                             {stage.tipo}
                           </span>
                           {provisorio ? <ProvisionalBadge label="YIELD A CONFIRMAR" /> : null}
+                          {Object.values(ETAPA_TO_STAGE).includes(stage.id) ? (
+                            <span className="flex items-center gap-1 rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary">
+                              <Database className="h-3 w-3" /> Banco
+                            </span>
+                          ) : null}
                         </div>
                       </div>
                       <div className="flex items-center gap-2 text-xs">
