@@ -46,6 +46,10 @@ interface ScenarioState {
 interface ScenarioApi {
   state: ScenarioState;
   setYieldValue: (stageId: string, modelId: ModelId, valor: number | null) => void;
+  applyYieldsFromDb: (
+    updates: Array<{ stageId: string; modelId: ModelId; valor: number }>,
+    documento: string,
+  ) => number;
   setStageActive: (stageId: string, ativo: boolean) => void;
   setDemand: (modelId: ModelId, periodo: string, demanda: number) => void;
   setDemandBulk: (modelId: ModelId, updates: Record<string, number>) => void;
@@ -62,7 +66,7 @@ interface ScenarioApi {
 
 const ScenarioContext = createContext<ScenarioApi | null>(null);
 
-const STORAGE_KEY = "scenario-default-v2";
+const STORAGE_KEY = "scenario-default-v3";
 
 function defaultState(): ScenarioState {
   // Horizonte fixo: 3 anos calendário iniciando em Janeiro/2027.
@@ -127,6 +131,40 @@ export function ScenarioProvider({ children }: { children: ReactNode }) {
         next[idx] = { ...next[idx], valor };
         return { ...s, yields: next };
       });
+    },
+    [],
+  );
+
+  const applyYieldsFromDb = useCallback(
+    (
+      updates: Array<{ stageId: string; modelId: ModelId; valor: number }>,
+      documento: string,
+    ) => {
+      let aplicados = 0;
+      setState((s) => {
+        const next = s.yields.slice();
+        for (const u of updates) {
+          const source = { documento, status: "em_revisao" as const };
+          const idx = next.findIndex(
+            (y) => y.stageId === u.stageId && y.modelId === u.modelId,
+          );
+          if (idx === -1) {
+            next.push({
+              id: `${u.stageId}__${u.modelId}`,
+              stageId: u.stageId,
+              modelId: u.modelId,
+              valor: u.valor,
+              tipoPerda: "sucata",
+              source,
+            });
+          } else {
+            next[idx] = { ...next[idx], valor: u.valor, source };
+          }
+          aplicados += 1;
+        }
+        return { ...s, yields: next };
+      });
+      return aplicados;
     },
     [],
   );
@@ -204,6 +242,7 @@ export function ScenarioProvider({ children }: { children: ReactNode }) {
     () => ({
       state,
       setYieldValue,
+      applyYieldsFromDb,
       setStageActive,
       setDemand,
       setDemandBulk,
@@ -216,6 +255,7 @@ export function ScenarioProvider({ children }: { children: ReactNode }) {
     [
       state,
       setYieldValue,
+      applyYieldsFromDb,
       setStageActive,
       setDemand,
       setDemandBulk,
