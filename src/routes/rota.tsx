@@ -107,8 +107,42 @@ function RotaPage() {
           </div>
         }
       />
-      <div className="p-6 max-w-5xl">
+      <div className="p-6 max-w-5xl space-y-5">
+        <Card className="border-primary/30">
+          <CardContent className="flex flex-wrap items-center justify-between gap-4 p-4">
+            <div className="flex items-start gap-3">
+              <Database className="mt-0.5 h-4 w-4 text-primary" />
+              <div className="text-xs">
+                <div className="text-sm font-semibold">Rendimentos do banco</div>
+                <div className="text-muted-foreground">
+                  {loading
+                    ? "Carregando base de rendimentos…"
+                    : error
+                      ? `Erro ao ler o banco: ${error}`
+                      : `${mapeados.length} par(es) etapa×modelo disponíveis · ${defasados} componente(s) pendente(s)/desatualizado(s).`}
+                </div>
+                {syncMsg ? <div className="mt-1 text-primary">{syncMsg}</div> : null}
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              {defasados > 0 ? (
+                <span className="flex items-center gap-1 text-xs text-warning">
+                  <AlertTriangle className="h-3 w-3" /> dados defasados (&gt;30 dias)
+                </span>
+              ) : null}
+              <Button variant="outline" size="sm" onClick={() => void reload()}>
+                <RefreshCw className="mr-2 h-4 w-4" />
+                Recarregar
+              </Button>
+              <Button size="sm" onClick={sincronizar} disabled={mapeados.length === 0}>
+                Sincronizar yields
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
         <ol className="relative border-l-2 border-primary/40 ml-4 space-y-4">
+
           {stagesSorted.map((stage) => {
             const yieldsStage = state.yields.filter((y) => y.stageId === stage.id);
             const provisorio = yieldsStage.some(
