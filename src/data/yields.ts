@@ -16,6 +16,7 @@ const stageIds = [
   "outer_stent_prep",
   "stentless_assembly",
   "inner_valve_assembly",
+  "inner_visual",
   "inner_bdc",
   "sleeves",
   "full_valve_assembly",
