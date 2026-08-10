@@ -28,7 +28,22 @@ export const Route = createFileRoute("/rota")({
 });
 
 function RotaPage() {
-  const { state, setYieldValue, setStageActive } = useScenario();
+  const { state, setYieldValue, setStageActive, applyYieldsFromDb } = useScenario();
+  const { rows, loading, error, reload } = useRendimentos();
+  const [syncMsg, setSyncMsg] = useState<string | null>(null);
+
+  const mapeados = useMemo(() => mapRendimentos(rows), [rows]);
+  const defasados = rows.filter(isDefasado).length;
+
+  const sincronizar = () => {
+    const n = applyYieldsFromDb(mapeados, "Banco · fato_rendimentos");
+    setSyncMsg(
+      n === 0
+        ? "Nenhum rendimento importado disponível para as etapas da rota."
+        : `${n} yield(s) atualizados a partir do banco de rendimentos.`,
+    );
+  };
+
 
   const demandaPorModelo = useMemo(() => {
     const map: Record<string, number> = {};
