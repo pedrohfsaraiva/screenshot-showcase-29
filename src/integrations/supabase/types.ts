@@ -14,10 +14,88 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      dim_componentes: {
+        Row: {
+          created_at: string
+          etapa_correspondente: string
+          id_componente: number
+          identificacao: string
+          tamanho: string
+        }
+        Insert: {
+          created_at?: string
+          etapa_correspondente: string
+          id_componente: number
+          identificacao: string
+          tamanho: string
+        }
+        Update: {
+          created_at?: string
+          etapa_correspondente?: string
+          id_componente?: number
+          identificacao?: string
+          tamanho?: string
+        }
+        Relationships: []
+      }
+      fato_rendimentos: {
+        Row: {
+          created_at: string
+          data_atualizacao: string
+          id: number
+          id_componente: number
+          nome_indicador: string
+          rendimento: number
+        }
+        Insert: {
+          created_at?: string
+          data_atualizacao?: string
+          id?: number
+          id_componente: number
+          nome_indicador: string
+          rendimento: number
+        }
+        Update: {
+          created_at?: string
+          data_atualizacao?: string
+          id?: number
+          id_componente?: number
+          nome_indicador?: string
+          rendimento?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fato_rendimentos_id_componente_fkey"
+            columns: ["id_componente"]
+            isOneToOne: false
+            referencedRelation: "dim_componentes"
+            referencedColumns: ["id_componente"]
+          },
+          {
+            foreignKeyName: "fato_rendimentos_id_componente_fkey"
+            columns: ["id_componente"]
+            isOneToOne: false
+            referencedRelation: "vw_rendimentos_status"
+            referencedColumns: ["id_componente"]
+          },
+        ]
+      }
     }
     Views: {
-      [_ in never]: never
+      vw_rendimentos_status: {
+        Row: {
+          data_atualizacao: string | null
+          dias_desde_atualizacao: number | null
+          etapa_correspondente: string | null
+          id_componente: number | null
+          identificacao: string | null
+          nome_indicador: string | null
+          rendimento: number | null
+          status_dados: string | null
+          tamanho: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       [_ in never]: never
