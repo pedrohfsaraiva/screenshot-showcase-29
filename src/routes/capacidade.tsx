@@ -237,7 +237,7 @@ function CapacidadePage() {
                                   : "text-success font-semibold"
                             }
                           >
-                            {(cobertura * 100).toFixed(0)}%
+                            {cobertura >= 9.99 ? "≥ 999%" : `${(cobertura * 100).toFixed(0)}%`}
                           </span>
                         )}
                       </TableCell>
