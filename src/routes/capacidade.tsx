@@ -34,14 +34,31 @@ export const Route = createFileRoute("/capacidade")({
 
 function CapacidadePage() {
   const { state, setCapacity } = useScenario();
+  const [ano, setAno] = useState<string>("todos");
+  const [tamanho, setTamanho] = useState<string>("todos");
+
+  const anos = useMemo(
+    () => Array.from(new Set(state.periodos.map((p) => p.slice(0, 4)))).sort(),
+    [state.periodos],
+  );
+
+  const periodosFiltrados = useMemo(
+    () =>
+      ano === "todos"
+        ? state.periodos
+        : state.periodos.filter((p) => p.startsWith(ano)),
+    [state.periodos, ano],
+  );
 
   // Necessidade bruta por etapa: soma da entrada bruta de cada modelo, considerando
-  // a demanda cadastrada e os yields por modelo.
+  // a demanda filtrada (ano/tamanho) e os yields por modelo.
   const necessidadePorEtapa = useMemo(() => {
     const acc: Record<string, number> = {};
+    const periodosSet = new Set(periodosFiltrados);
     for (const p of state.products) {
+      if (tamanho !== "todos" && p.id !== tamanho) continue;
       const demanda = state.demand
-        .filter((d) => d.modelId === p.id)
+        .filter((d) => d.modelId === p.id && periodosSet.has(d.periodo))
         .reduce((a, d) => a + d.demanda, 0);
       if (demanda <= 0) continue;
       const exp = reverseExplode(demanda, state.stages, state.yields, p.id);
@@ -50,9 +67,9 @@ function CapacidadePage() {
       }
     }
     return acc;
-  }, [state.demand, state.products, state.stages, state.yields]);
+  }, [state.demand, state.products, state.stages, state.yields, periodosFiltrados, tamanho]);
 
-  const mesesHorizonte = state.periodos.length || 36;
+  const mesesHorizonte = periodosFiltrados.length || 36;
   const diasHorizonte = mesesHorizonte * DIAS_UTEIS_POR_MES;
 
   const stagesSorted = useMemo(
@@ -64,8 +81,47 @@ function CapacidadePage() {
     <div>
       <PageHeader
         title="Capacidade · Tempos e Métodos"
-        subtitle={`FTE calculado sobre a necessidade bruta do horizonte (${mesesHorizonte} meses × ${DIAS_UTEIS_POR_MES} dias úteis).`}
+        subtitle={`FTE calculado sobre a necessidade bruta do período filtrado (${mesesHorizonte} meses × ${DIAS_UTEIS_POR_MES} dias úteis).`}
       />
+      <div className="px-6 pt-4 flex flex-wrap items-end gap-4">
+        <div className="space-y-1">
+          <label className="text-xs uppercase tracking-wider text-muted-foreground">
+            Ano
+          </label>
+          <Select value={ano} onValueChange={setAno}>
+            <SelectTrigger className="h-9 w-40">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todos">Todos os anos</SelectItem>
+              {anos.map((a) => (
+                <SelectItem key={a} value={a}>
+                  {a}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1">
+          <label className="text-xs uppercase tracking-wider text-muted-foreground">
+            Tamanho
+          </label>
+          <Select value={tamanho} onValueChange={setTamanho}>
+            <SelectTrigger className="h-9 w-44">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todos">Todos os tamanhos</SelectItem>
+              {state.products.map((p) => (
+                <SelectItem key={p.id} value={p.id}>
+                  {p.id}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
       <div className="p-6">
         <Card>
           <CardContent className="p-0 overflow-auto">
