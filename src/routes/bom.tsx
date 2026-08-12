@@ -1,8 +1,16 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useState } from "react";
 import { PageHeader } from "@/components/PageHeader";
 import { ProvisionalBadge } from "@/components/ProvisionalBadge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -29,12 +37,35 @@ export const Route = createFileRoute("/bom")({
 function BomPage() {
   const { state, setBomQty } = useScenario();
   const matById = new Map(state.materials.map((m) => [m.id, m]));
+  const [tamanho, setTamanho] = useState<string>("todos");
+
+  const linhas = state.bom
+    .map((line, i) => ({ line, i }))
+    .filter(
+      ({ line }) =>
+        tamanho === "todos" || !line.modelId || line.modelId === tamanho,
+    );
 
   return (
     <div>
       <PageHeader
         title="BOM · Estrutura de Produto"
         subtitle="Quantidades marcadas como DADO A CONFIRMAR não podem ser tratadas como aprovadas para compra."
+        actions={
+          <Select value={tamanho} onValueChange={setTamanho}>
+            <SelectTrigger className="w-52">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todos">Todos os tamanhos</SelectItem>
+              {state.products.map((p) => (
+                <SelectItem key={p.id} value={p.id}>
+                  {p.nome}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        }
       />
       <div className="p-6">
         <Card>
@@ -52,7 +83,7 @@ function BomPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {state.bom.map((line, i) => {
+                {linhas.map(({ line, i }) => {
                   const mat = matById.get(line.childId);
                   const provisorio = line.qtyPer === null;
                   return (

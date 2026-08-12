@@ -153,12 +153,16 @@ function CapacidadePage() {
                   };
                   const necessidade = necessidadePorEtapa[stage.id] ?? 0;
                   const fteNecessario =
-                    cap.taxaPorDia && cap.taxaPorDia > 0
+                    cap.taxaPorDia && cap.taxaPorDia > 0 && diasHorizonte > 0
                       ? necessidade / (cap.taxaPorDia * diasHorizonte)
                       : null;
                   const cobertura =
-                    fteNecessario !== null && cap.operadores && cap.operadores > 0
-                      ? cap.operadores / fteNecessario
+                    fteNecessario !== null &&
+                    fteNecessario > 0 &&
+                    cap.operadores !== null &&
+                    cap.operadores >= 0 &&
+                    Number.isFinite(cap.operadores / fteNecessario)
+                      ? Math.min(cap.operadores / fteNecessario, 9.99)
                       : null;
                   const gap = fteNecessario !== null && cap.operadores !== null
                     ? cap.operadores - fteNecessario
@@ -233,7 +237,7 @@ function CapacidadePage() {
                                   : "text-success font-semibold"
                             }
                           >
-                            {(cobertura * 100).toFixed(0)}%
+                            {cobertura >= 9.99 ? "≥ 999%" : `${(cobertura * 100).toFixed(0)}%`}
                           </span>
                         )}
                       </TableCell>

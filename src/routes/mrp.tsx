@@ -45,6 +45,7 @@ interface Row {
   descricao: string;
   categoria: string;
   unidade: string;
+  definida: boolean;
   y1: number;
   y2: number;
   y3: number;
@@ -80,8 +81,8 @@ function MrpPage() {
     const acc = new Map<string, Row>();
 
     for (const line of state.bom) {
-      const qty = line.qtyPer;
-      if (qty === null || qty === undefined) continue;
+      const definida = line.qtyPer !== null && line.qtyPer !== undefined;
+      const qty = definida ? (line.qtyPer as number) : 0;
       const material = matById.get(line.childId);
       if (!material) continue;
 
@@ -101,6 +102,7 @@ function MrpPage() {
           prev.y2 += y2;
           prev.y3 += y3;
           prev.total = prev.y1 + prev.y2 + prev.y3;
+          prev.definida = prev.definida && definida;
         } else {
           acc.set(key, {
             key,
@@ -109,6 +111,7 @@ function MrpPage() {
             descricao: material.descricao,
             categoria: material.categoria,
             unidade: material.unidade,
+            definida,
             y1,
             y2,
             y3,
@@ -217,20 +220,27 @@ function MrpPage() {
                       <TableCell className="text-muted-foreground text-xs">
                         {r.materialId}
                       </TableCell>
-                      <TableCell>{r.descricao}</TableCell>
+                      <TableCell>
+                        {r.descricao}
+                        {!r.definida ? (
+                          <span className="ml-2 text-[10px] uppercase tracking-wider text-warning">
+                            dado a confirmar
+                          </span>
+                        ) : null}
+                      </TableCell>
                       <TableCell className="text-muted-foreground">{r.categoria}</TableCell>
                       <TableCell className="text-muted-foreground">{r.unidade}</TableCell>
                       <TableCell className="text-right tabular-nums">
-                        {formatInt(r.y1)}
+                        {r.definida ? formatInt(r.y1) : "—"}
                       </TableCell>
                       <TableCell className="text-right tabular-nums">
-                        {formatInt(r.y2)}
+                        {r.definida ? formatInt(r.y2) : "—"}
                       </TableCell>
                       <TableCell className="text-right tabular-nums">
-                        {formatInt(r.y3)}
+                        {r.definida ? formatInt(r.y3) : "—"}
                       </TableCell>
                       <TableCell className="text-right tabular-nums font-semibold text-primary">
-                        {formatInt(r.total)}
+                        {r.definida ? formatInt(r.total) : "—"}
                       </TableCell>
                     </TableRow>
                   ))
