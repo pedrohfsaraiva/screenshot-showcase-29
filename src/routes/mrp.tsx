@@ -45,6 +45,7 @@ interface Row {
   descricao: string;
   categoria: string;
   unidade: string;
+  definida: boolean;
   y1: number;
   y2: number;
   y3: number;
