@@ -220,20 +220,27 @@ function MrpPage() {
                       <TableCell className="text-muted-foreground text-xs">
                         {r.materialId}
                       </TableCell>
-                      <TableCell>{r.descricao}</TableCell>
+                      <TableCell>
+                        {r.descricao}
+                        {!r.definida ? (
+                          <span className="ml-2 text-[10px] uppercase tracking-wider text-warning">
+                            dado a confirmar
+                          </span>
+                        ) : null}
+                      </TableCell>
                       <TableCell className="text-muted-foreground">{r.categoria}</TableCell>
                       <TableCell className="text-muted-foreground">{r.unidade}</TableCell>
                       <TableCell className="text-right tabular-nums">
-                        {formatInt(r.y1)}
+                        {r.definida ? formatInt(r.y1) : "—"}
                       </TableCell>
                       <TableCell className="text-right tabular-nums">
-                        {formatInt(r.y2)}
+                        {r.definida ? formatInt(r.y2) : "—"}
                       </TableCell>
                       <TableCell className="text-right tabular-nums">
-                        {formatInt(r.y3)}
+                        {r.definida ? formatInt(r.y3) : "—"}
                       </TableCell>
                       <TableCell className="text-right tabular-nums font-semibold text-primary">
-                        {formatInt(r.total)}
+                        {r.definida ? formatInt(r.total) : "—"}
                       </TableCell>
                     </TableRow>
                   ))
