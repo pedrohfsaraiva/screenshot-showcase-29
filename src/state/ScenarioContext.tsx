@@ -66,7 +66,7 @@ interface ScenarioApi {
 
 const ScenarioContext = createContext<ScenarioApi | null>(null);
 
-const STORAGE_KEY = "scenario-default-v3";
+const STORAGE_KEY = "scenario-default-v4";
 
 function defaultState(): ScenarioState {
   // Horizonte fixo: 3 anos calendário iniciando em Janeiro/2027.
