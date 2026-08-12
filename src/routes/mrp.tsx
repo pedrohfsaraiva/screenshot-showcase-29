@@ -81,8 +81,8 @@ function MrpPage() {
     const acc = new Map<string, Row>();
 
     for (const line of state.bom) {
-      const qty = line.qtyPer;
-      if (qty === null || qty === undefined) continue;
+      const definida = line.qtyPer !== null && line.qtyPer !== undefined;
+      const qty = definida ? (line.qtyPer as number) : 0;
       const material = matById.get(line.childId);
       if (!material) continue;
 
@@ -102,6 +102,7 @@ function MrpPage() {
           prev.y2 += y2;
           prev.y3 += y3;
           prev.total = prev.y1 + prev.y2 + prev.y3;
+          prev.definida = prev.definida && definida;
         } else {
           acc.set(key, {
             key,
@@ -110,6 +111,7 @@ function MrpPage() {
             descricao: material.descricao,
             categoria: material.categoria,
             unidade: material.unidade,
+            definida,
             y1,
             y2,
             y3,
