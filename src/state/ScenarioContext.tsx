@@ -25,7 +25,10 @@ import { generatePeriods, seedDemand } from "@/data/demand";
 import { localStorageAdapter } from "@/lib/storage";
 
 export interface CapacityParam {
-  taxaPorDia: number | null; // unidades por dia por operador
+  /** Unidades por dia por operador — TR1P-45. */
+  taxaPorDia45: number | null;
+  /** Unidades por dia por operador — TR1P-55. */
+  taxaPorDia55: number | null;
   operadores: number | null; // operadores disponíveis
 }
 
