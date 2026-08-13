@@ -23,9 +23,13 @@ import { materials as seedMaterials } from "@/data/materials";
 import { bom as seedBom } from "@/data/bom";
 import { generatePeriods, seedDemand } from "@/data/demand";
 import { localStorageAdapter } from "@/lib/storage";
+import { defaultCalendar, type CalendarParams } from "@/data/capacity";
 
 export interface CapacityParam {
-  taxaPorDia: number | null; // unidades por dia por operador
+  /** Unidades por dia por operador — TR1P-45. */
+  taxaPorDia45: number | null;
+  /** Unidades por dia por operador — TR1P-55. */
+  taxaPorDia55: number | null;
   operadores: number | null; // operadores disponíveis
 }
 
@@ -41,6 +45,7 @@ interface ScenarioState {
   demand: DemandPeriod[];
   viewMode: "mensal" | "anual";
   capacity: Record<string, CapacityParam>;
+  calendar: CalendarParams;
 }
 
 interface ScenarioApi {
@@ -61,12 +66,13 @@ interface ScenarioApi {
     value: number | null,
   ) => void;
   setCapacity: (stageId: string, patch: Partial<CapacityParam>) => void;
+  setCalendar: (patch: Partial<CalendarParams>) => void;
   resetToSeed: () => void;
 }
 
 const ScenarioContext = createContext<ScenarioApi | null>(null);
 
-const STORAGE_KEY = "scenario-default-v4";
+const STORAGE_KEY = "scenario-default-v5";
 
 function defaultState(): ScenarioState {
   // Horizonte fixo: 3 anos calendário iniciando em Janeiro/2027.
@@ -84,6 +90,7 @@ function defaultState(): ScenarioState {
     demand: seedDemand(periodos),
     viewMode: "mensal",
     capacity: {},
+    calendar: defaultCalendar,
   };
 }
 
@@ -95,7 +102,12 @@ export function ScenarioProvider({ children }: { children: ReactNode }) {
     const persisted = localStorageAdapter.load<ScenarioState>(STORAGE_KEY);
     if (persisted && persisted.periodos && persisted.stages) {
       // Compat: garante campos novos após updates de schema.
-      setState({ ...defaultState(), ...persisted, capacity: persisted.capacity ?? {} });
+      setState({
+        ...defaultState(),
+        ...persisted,
+        capacity: persisted.capacity ?? {},
+        calendar: { ...defaultCalendar, ...(persisted.calendar ?? {}) },
+      });
     }
     setHydrated(true);
   }, []);
@@ -226,7 +238,11 @@ export function ScenarioProvider({ children }: { children: ReactNode }) {
   const setCapacity = useCallback(
     (stageId: string, patch: Partial<CapacityParam>) => {
       setState((s) => {
-        const prev = s.capacity[stageId] ?? { taxaPorDia: null, operadores: null };
+        const prev = s.capacity[stageId] ?? {
+          taxaPorDia45: null,
+          taxaPorDia55: null,
+          operadores: null,
+        };
         return {
           ...s,
           capacity: { ...s.capacity, [stageId]: { ...prev, ...patch } },
@@ -235,6 +251,10 @@ export function ScenarioProvider({ children }: { children: ReactNode }) {
     },
     [],
   );
+
+  const setCalendar = useCallback((patch: Partial<CalendarParams>) => {
+    setState((s) => ({ ...s, calendar: { ...s.calendar, ...patch } }));
+  }, []);
 
   const resetToSeed = useCallback(() => setState(defaultState()), []);
 
@@ -250,6 +270,7 @@ export function ScenarioProvider({ children }: { children: ReactNode }) {
       setBomQty,
       setMaterialField,
       setCapacity,
+      setCalendar,
       resetToSeed,
     }),
     [
@@ -263,6 +284,7 @@ export function ScenarioProvider({ children }: { children: ReactNode }) {
       setBomQty,
       setMaterialField,
       setCapacity,
+      setCalendar,
       resetToSeed,
     ],
   );
