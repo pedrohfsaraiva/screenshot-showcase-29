@@ -29,6 +29,18 @@ import {
   resourceOfStage,
 } from "@/data/capacity";
 import type { ModelId } from "@/domain/types";
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  ReferenceLine,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
+
 
 export const Route = createFileRoute("/capacidade")({
   head: () => ({
@@ -166,7 +178,24 @@ function CapacidadePage() {
   }, [carga, periodosFiltrados, state.capacity, horasPorOperadorMes]);
 
   /** Gargalo mês a mês: recurso com maior utilização. */
+  /** Utilização global mês a mês (carga total vs. capacidade instalada total). */
+  const utilizacaoMensal = useMemo(() => {
+    const capacidadeTotalMes = porRecurso.reduce((a, r) => a + r.capacidadeMes, 0);
+    return periodosFiltrados.map((p) => {
+      const horas = porRecurso.reduce((a, r) => a + (r.horasMes[p] ?? 0), 0);
+      const util = capacidadeTotalMes > 0 ? horas / capacidadeTotalMes : null;
+      return {
+        periodo: p,
+        label: formatPeriod(p),
+        horas,
+        util,
+        pct: util === null ? 0 : Math.min(util * 100, 999),
+      };
+    });
+  }, [porRecurso, periodosFiltrados]);
+
   const gargalos = useMemo(() => {
+
     return periodosFiltrados.map((p) => {
       let melhor: { nome: string; util: number | null; horas: number } | null = null;
       for (const r of porRecurso) {
@@ -324,6 +353,74 @@ function CapacidadePage() {
             </CardContent>
           </Card>
         </div>
+
+        {/* Utilização mensal */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm">
+              Utilização mensal da capacidade instalada
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="h-[300px]">
+            {utilizacaoMensal.some((d) => d.util !== null) ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  data={utilizacaoMensal.filter((d) => d.util !== null)}
+                  margin={{ top: 8, right: 12, bottom: 0, left: 0 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
+                  <XAxis
+                    dataKey="label"
+                    tick={{ fontSize: 11 }}
+                    interval={0}
+                    angle={-40}
+                    height={54}
+                    textAnchor="end"
+                    stroke="var(--color-muted-foreground)"
+                  />
+                  <YAxis
+                    tick={{ fontSize: 11 }}
+                    width={52}
+                    unit="%"
+                    stroke="var(--color-muted-foreground)"
+                  />
+                  <Tooltip
+                    formatter={(v: number) => [`${v.toFixed(0)}%`, "Utilização"]}
+                    contentStyle={{
+                      background: "var(--color-card)",
+                      border: "1px solid var(--color-border)",
+                      borderRadius: 8,
+                      fontSize: 12,
+                    }}
+                  />
+                  <ReferenceLine y={100} stroke="var(--color-destructive)" strokeDasharray="4 4" />
+                  <Bar dataKey="pct" radius={[4, 4, 0, 0]}>
+                    {utilizacaoMensal
+                      .filter((d) => d.util !== null)
+                      .map((d) => (
+                        <Cell
+                          key={d.periodo}
+                          fill={
+                            (d.util as number) > 1
+                              ? "var(--color-destructive)"
+                              : (d.util as number) > 0.9
+                                ? "var(--color-warning)"
+                                : "var(--color-success)"
+                          }
+                        />
+                      ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+                Informe operadores atuais por recurso e a demanda em Cenários para ver a
+                utilização mensal.
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
 
         {/* Recursos */}
         <Card>
