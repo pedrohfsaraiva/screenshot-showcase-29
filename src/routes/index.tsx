@@ -56,9 +56,10 @@ type ModelFilter = "all" | ModelId;
 type YearFilter = "all" | "Y1" | "Y2" | "Y3";
 
 // Trunca sem arredondar para cima; usado no RTY.
+// O RTY vem em escala de fração de percentual, por isso o fator adicional de 100.
 function truncPct(v: number, digits: number): string {
   const factor = Math.pow(10, digits);
-  const truncated = Math.trunc(v * 100 * factor) / factor;
+  const truncated = Math.trunc(v * 100 * 100 * factor) / factor;
   return `${truncated.toFixed(digits)}%`;
 }
 
