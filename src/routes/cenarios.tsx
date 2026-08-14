@@ -1,28 +1,45 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
+import {
+  Area,
+  AreaChart,
+  CartesianGrid,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useScenario } from "@/state/ScenarioContext";
 import { formatInt, formatPeriod } from "@/lib/format";
 import type { ModelId } from "@/domain/types";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/cenarios")({
   head: () => ({
     meta: [
       { title: "Cenários · Topaz MRP" },
-      { name: "description", content: "Cadastro de demanda, exportação e reset de cenário." },
+      {
+        name: "description",
+        content:
+          "Planejamento de demanda em 36 meses por modelo, com totais anuais, curva mensal e exportação de cenário.",
+      },
+      { property: "og:title", content: "Cenários · Topaz MRP" },
+      {
+        property: "og:description",
+        content: "Demanda de 36 meses por modelo, totais anuais e exportação do cenário.",
+      },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: CenariosPage,
@@ -30,26 +47,44 @@ export const Route = createFileRoute("/cenarios")({
 
 function CenariosPage() {
   const { state, setDemand, setDemandBulk, resetToSeed } = useScenario();
-  const [modelo, setModelo] = useState<ModelId>("TR1P-45");
+  const [modelo, setModelo] = useState<ModelId>(
+    (state.products[0]?.id as ModelId) ?? "TR1P-45",
+  );
 
   const demandaDoModelo = useMemo(
     () => state.demand.filter((d) => d.modelId === modelo),
     [state.demand, modelo],
   );
 
-  // Divide os 36 períodos em 3 blocos de 12 meses (Y1, Y2, Y3).
-  const yearBlocks = useMemo(() => {
-    return [0, 1, 2].map((idx) => demandaDoModelo.slice(idx * 12, idx * 12 + 12));
-  }, [demandaDoModelo]);
+  const yearBlocks = useMemo(
+    () => [0, 1, 2].map((idx) => demandaDoModelo.slice(idx * 12, idx * 12 + 12)),
+    [demandaDoModelo],
+  );
 
   const yearTotals = useMemo(
     () => yearBlocks.map((block) => block.reduce((a, d) => a + d.demanda, 0)),
     [yearBlocks],
   );
 
+  const yearLabels = useMemo(
+    () => [0, 1, 2].map((i) => state.periodos[i * 12]?.slice(0, 4) ?? `Y${i + 1}`),
+    [state.periodos],
+  );
+
+  const chartData = useMemo(
+    () =>
+      demandaDoModelo.map((d) => ({
+        periodo: formatPeriod(d.periodo),
+        demanda: d.demanda,
+      })),
+    [demandaDoModelo],
+  );
+
+  const totalModelo = yearTotals.reduce((a, b) => a + b, 0);
+
   const distribuirAno = (yearIdx: number, total: number) => {
     const block = yearBlocks[yearIdx];
-    if (!block.length) return;
+    if (!block?.length) return;
     const safe = Math.max(0, Math.floor(total));
     const base = Math.floor(safe / 12);
     const resto = safe - base * 12;
@@ -59,8 +94,6 @@ function CenariosPage() {
     });
     setDemandBulk(modelo, updates);
   };
-
-  const totalModelo = yearTotals.reduce((a, b) => a + b, 0);
 
   const exportJson = () => {
     const blob = new Blob([JSON.stringify(state, null, 2)], { type: "application/json" });
@@ -75,9 +108,7 @@ function CenariosPage() {
 
   const exportCsv = () => {
     const header = "modelId,periodo,demanda\n";
-    const rows = state.demand
-      .map((d) => `${d.modelId},${d.periodo},${d.demanda}`)
-      .join("\n");
+    const rows = state.demand.map((d) => `${d.modelId},${d.periodo},${d.demanda}`).join("\n");
     const blob = new Blob([header + rows], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -92,7 +123,7 @@ function CenariosPage() {
     <div>
       <PageHeader
         title="Cenários"
-        subtitle={`Cenário atual: ${state.scenarioId} · base ${state.baseDate} · horizonte 36 meses.`}
+        subtitle={`Cenário ${state.scenarioId} · base ${state.baseDate} · horizonte de 36 meses. A demanda aqui alimenta MRP e Capacidade em tempo real.`}
         actions={
           <div className="flex gap-2">
             <Button variant="outline" size="sm" onClick={exportCsv}>
@@ -117,55 +148,92 @@ function CenariosPage() {
         }
       />
 
-      <div className="p-6 grid gap-6 lg:grid-cols-3">
-        <Card className="lg:col-span-1">
-          <CardHeader>
-            <CardTitle className="text-base">Modelos cadastrados</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3 text-sm">
-            {state.products.map((p) => (
-              <div key={p.id} className="rounded-md border border-border p-3">
-                <div className="font-semibold">{p.nome}</div>
-                <div className="text-xs text-muted-foreground">{p.id}</div>
-                <div className="mt-1 text-xs">
-                  Aliases:{" "}
-                  <span className="text-muted-foreground">{p.aliases.join(", ")}</span>
+      <div className="p-6 grid gap-6 lg:grid-cols-[320px_minmax(0,1fr)]">
+        {/* Painel esquerdo: modelos */}
+        <div className="space-y-4">
+          {state.products.map((p) => {
+            const serie = state.demand.filter((d) => d.modelId === p.id);
+            const total = serie.reduce((a, d) => a + d.demanda, 0);
+            const anos = [0, 1, 2].map((i) =>
+              serie.slice(i * 12, i * 12 + 12).reduce((a, d) => a + d.demanda, 0),
+            );
+            const ativo = p.id === modelo;
+            return (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => setModelo(p.id as ModelId)}
+                className={cn(
+                  "w-full text-left rounded-lg border p-4 transition-colors",
+                  ativo
+                    ? "border-primary bg-primary/5 ring-1 ring-primary/40"
+                    : "border-border hover:bg-muted/40",
+                )}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <div className="font-semibold">{p.nome}</div>
+                    <div className="text-xs text-muted-foreground">{p.id}</div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-lg font-semibold tabular-nums">
+                      {formatInt(total)}
+                    </div>
+                    <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                      un / 3 anos
+                    </div>
+                  </div>
                 </div>
-                <div className="mt-1 text-xs text-muted-foreground">
+
+                <div className="mt-3 h-12">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={serie.map((d) => ({ v: d.demanda }))}>
+                      <Area
+                        type="monotone"
+                        dataKey="v"
+                        stroke="var(--color-primary)"
+                        fill="var(--color-primary)"
+                        fillOpacity={0.18}
+                        strokeWidth={1.5}
+                        isAnimationActive={false}
+                        dot={false}
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+
+                <div className="mt-2 grid grid-cols-3 gap-2 text-center">
+                  {anos.map((v, i) => (
+                    <div key={i} className="rounded-md bg-muted/40 py-1">
+                      <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                        {yearLabels[i]}
+                      </div>
+                      <div className="text-xs font-semibold tabular-nums">
+                        {formatInt(v)}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="mt-2 text-[11px] text-muted-foreground">
                   BOM {p.bomRevision} · Rota {p.routeRevision}
                 </div>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
+              </button>
+            );
+          })}
+        </div>
 
-        <Card className="lg:col-span-2">
-          <CardHeader className="flex-row items-center justify-between">
-            <CardTitle className="text-base">
-              Demanda mensal · Total {formatInt(totalModelo)} un
-            </CardTitle>
-            <div className="w-48">
-              <Label className="sr-only">Modelo</Label>
-              <Select value={modelo} onValueChange={(v) => setModelo(v as ModelId)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {state.products.map((p) => (
-                    <SelectItem key={p.id} value={p.id}>
-                      {p.id}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </CardHeader>
-          <CardContent className="p-0 max-h-[540px] overflow-auto">
-            <div className="sticky top-0 z-10 bg-card border-b border-border p-4 grid grid-cols-3 gap-3">
-              {[0, 1, 2].map((i) => (
-                <div key={i} className="space-y-1">
-                  <Label htmlFor={`total-y${i + 1}`} className="text-xs text-muted-foreground">
-                    Total Y{i + 1}
+        {/* Painel direito */}
+        <div className="space-y-6">
+          <div className="grid gap-4 sm:grid-cols-3">
+            {[0, 1, 2].map((i) => (
+              <Card key={i}>
+                <CardContent className="p-5">
+                  <Label
+                    htmlFor={`total-y${i + 1}`}
+                    className="text-xs uppercase tracking-wider text-muted-foreground"
+                  >
+                    Total {yearLabels[i]} · {modelo}
                   </Label>
                   <Input
                     id={`total-y${i + 1}`}
@@ -173,39 +241,118 @@ function CenariosPage() {
                     min={0}
                     value={yearTotals[i] ?? 0}
                     onChange={(e) => distribuirAno(i, Number(e.target.value) || 0)}
-                    className="text-right tabular-nums"
+                    className="mt-2 h-11 text-right text-xl font-semibold tabular-nums"
                   />
+                  <p className="mt-2 text-[11px] text-muted-foreground">
+                    Distribui igualmente nos 12 meses (resto no mês 12).
+                  </p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm">
+                Curva de demanda · {modelo} · {formatInt(totalModelo)} un em 36 meses
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="h-[280px]">
+              {totalModelo > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={chartData} margin={{ top: 8, right: 12, bottom: 0, left: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
+                    <XAxis
+                      dataKey="periodo"
+                      tick={{ fontSize: 11 }}
+                      interval={2}
+                      stroke="var(--color-muted-foreground)"
+                    />
+                    <YAxis
+                      tick={{ fontSize: 11 }}
+                      width={48}
+                      stroke="var(--color-muted-foreground)"
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        background: "var(--color-card)",
+                        border: "1px solid var(--color-border)",
+                        borderRadius: 8,
+                        fontSize: 12,
+                      }}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="demanda"
+                      name="Demanda (un)"
+                      stroke="var(--color-primary)"
+                      strokeWidth={2}
+                      dot={false}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="flex h-full flex-col items-center justify-center gap-3 text-sm text-muted-foreground">
+                  Nenhuma demanda cadastrada para {modelo}.
+                  <Button size="sm" onClick={() => distribuirAno(0, 120)}>
+                    Preencher {yearLabels[0]} com 120 un
+                  </Button>
                 </div>
-              ))}
-            </div>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Período</TableHead>
-                  <TableHead className="text-right">Demanda (un)</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {demandaDoModelo.map((d) => (
-                  <TableRow key={d.periodo}>
-                    <TableCell>{formatPeriod(d.periodo)}</TableCell>
-                    <TableCell className="text-right">
-                      <Input
-                        type="number"
-                        min={0}
-                        value={d.demanda}
-                        onChange={(e) =>
-                          setDemand(modelo, d.periodo, Math.max(0, Number(e.target.value) || 0))
-                        }
-                        className="ml-auto w-28 text-right tabular-nums"
-                      />
-                    </TableCell>
-                  </TableRow>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm">Demanda mensal · {modelo}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Tabs defaultValue="0">
+                <TabsList>
+                  {[0, 1, 2].map((i) => (
+                    <TabsTrigger key={i} value={String(i)}>
+                      {yearLabels[i]}
+                    </TabsTrigger>
+                  ))}
+                </TabsList>
+                {[0, 1, 2].map((i) => (
+                  <TabsContent key={i} value={String(i)} className="mt-4">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Período</TableHead>
+                          <TableHead className="text-right">Demanda (un)</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {(yearBlocks[i] ?? []).map((d) => (
+                          <TableRow key={d.periodo}>
+                            <TableCell>{formatPeriod(d.periodo)}</TableCell>
+                            <TableCell className="text-right">
+                              <Input
+                                type="number"
+                                min={0}
+                                value={d.demanda}
+                                onChange={(e) =>
+                                  setDemand(
+                                    modelo,
+                                    d.periodo,
+                                    Math.max(0, Number(e.target.value) || 0),
+                                  )
+                                }
+                                className="ml-auto w-28 text-right tabular-nums"
+                              />
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </TabsContent>
                 ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
+              </Tabs>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   );
