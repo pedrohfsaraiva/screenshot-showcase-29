@@ -178,7 +178,24 @@ function CapacidadePage() {
   }, [carga, periodosFiltrados, state.capacity, horasPorOperadorMes]);
 
   /** Gargalo mês a mês: recurso com maior utilização. */
+  /** Utilização global mês a mês (carga total vs. capacidade instalada total). */
+  const utilizacaoMensal = useMemo(() => {
+    const capacidadeTotalMes = porRecurso.reduce((a, r) => a + r.capacidadeMes, 0);
+    return periodosFiltrados.map((p) => {
+      const horas = porRecurso.reduce((a, r) => a + (r.horasMes[p] ?? 0), 0);
+      const util = capacidadeTotalMes > 0 ? horas / capacidadeTotalMes : null;
+      return {
+        periodo: p,
+        label: formatPeriod(p),
+        horas,
+        util,
+        pct: util === null ? 0 : Math.min(util * 100, 999),
+      };
+    });
+  }, [porRecurso, periodosFiltrados]);
+
   const gargalos = useMemo(() => {
+
     return periodosFiltrados.map((p) => {
       let melhor: { nome: string; util: number | null; horas: number } | null = null;
       for (const r of porRecurso) {
