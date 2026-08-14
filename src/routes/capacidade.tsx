@@ -29,6 +29,18 @@ import {
   resourceOfStage,
 } from "@/data/capacity";
 import type { ModelId } from "@/domain/types";
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  ReferenceLine,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
+
 
 export const Route = createFileRoute("/capacidade")({
   head: () => ({
