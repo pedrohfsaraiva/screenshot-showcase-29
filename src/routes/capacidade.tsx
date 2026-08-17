@@ -25,6 +25,7 @@ import { formatInt, formatPeriod } from "@/lib/format";
 import {
   defaultTaxa,
   horasDisponiveisPorOperadorMes,
+  learningEfficiency,
   resourceGroups,
   resourceOfStage,
 } from "@/data/capacity";
