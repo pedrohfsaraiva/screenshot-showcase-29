@@ -25,6 +25,7 @@ import { formatInt, formatPeriod } from "@/lib/format";
 import {
   defaultTaxa,
   horasDisponiveisPorOperadorMes,
+  learningEfficiency,
   resourceGroups,
   resourceOfStage,
 } from "@/data/capacity";
@@ -113,9 +114,12 @@ function CapacidadePage() {
           .reduce((a, d) => a + d.demanda, 0);
         if (demanda <= 0) continue;
         const exp = reverseExplode(demanda, state.stages, state.yields, p.id);
+        // Curva de aprendizado: meses iniciais consomem mais horas padrão.
+        const eff = learningEfficiency(state.periodos.indexOf(periodo));
         for (const r of exp.reconciliacao) {
           const taxa = taxaDe(r.stageId, p.id);
-          const horas = taxa > 0 ? (r.entradaBruta / taxa) * cal.horasPorDia : 0;
+          const horas =
+            taxa > 0 ? ((r.entradaBruta / taxa) * cal.horasPorDia) / eff : 0;
           porEtapaPeriodo[r.stageId] ??= {};
           porEtapaPeriodo[r.stageId][periodo] =
             (porEtapaPeriodo[r.stageId][periodo] ?? 0) + horas;
@@ -146,9 +150,12 @@ function CapacidadePage() {
       }
       const horasTotal = Object.values(horasMes).reduce((a, b) => a + b, 0);
       const operadores = operadoresDe(g.id);
-      const capacidadeMes = operadores * horasPorOperadorMes;
+      // Utilização é definida por recurso (gargalo próximo do máximo,
+      // demais subordinados ao ritmo do gargalo).
+      const horasEfetivasOperador = horasPorOperadorMes * g.utilizacaoAlvo;
+      const capacidadeMes = operadores * horasEfetivasOperador;
       const fteMes = periodosFiltrados.map((p) =>
-        horasPorOperadorMes > 0 ? horasMes[p] / horasPorOperadorMes : 0,
+        horasEfetivasOperador > 0 ? horasMes[p] / horasEfetivasOperador : 0,
       );
       const fteMedio =
         fteMes.length > 0 ? fteMes.reduce((a, b) => a + b, 0) / fteMes.length : 0;
@@ -157,10 +164,6 @@ function CapacidadePage() {
         capacidadeMes > 0 && periodosFiltrados.length > 0
           ? horasTotal / (capacidadeMes * periodosFiltrados.length)
           : null;
-      const backlogHoras = periodosFiltrados.reduce(
-        (a, p) => a + Math.max(0, horasMes[p] - capacidadeMes),
-        0,
-      );
       const fteAdicional = Math.max(0, Math.ceil(ftePico - operadores));
       return {
         ...g,
@@ -171,7 +174,6 @@ function CapacidadePage() {
         fteMedio,
         ftePico,
         utilizacao,
-        backlogHoras,
         fteAdicional,
       };
     });
@@ -222,7 +224,7 @@ function CapacidadePage() {
 
   const totalHoras = porRecurso.reduce((a, r) => a + r.horasTotal, 0);
   const fteTotalPico = porRecurso.reduce((a, r) => a + r.ftePico, 0);
-  const backlogTotal = porRecurso.reduce((a, r) => a + r.backlogHoras, 0);
+  const fteTotalMedio = porRecurso.reduce((a, r) => a + r.fteMedio, 0);
 
   const pct = (v: number | null) =>
     v === null || !Number.isFinite(v) ? "—" : `${Math.min(v * 100, 9999).toFixed(0)}%`;
@@ -296,7 +298,6 @@ function CapacidadePage() {
                 ["feriasDiasAno", "Férias (dias/ano)", 1, false],
                 ["absenteismo", "Absenteísmo (%)", 0.5, true],
                 ["treinamento", "Treinamento (%)", 0.5, true],
-                ["utilizacao", "Utilização (%)", 1, true],
               ] as const
             ).map(([key, label, step, isPct]) => (
               <div key={key} className="space-y-1">
@@ -343,12 +344,10 @@ function CapacidadePage() {
           <Card>
             <CardContent className="p-5">
               <p className="text-xs uppercase tracking-wider text-muted-foreground">
-                Backlog acumulado
+                FTE médio no horizonte
               </p>
-              <p
-                className={`mt-2 text-2xl font-semibold tabular-nums ${backlogTotal > 0 ? "text-destructive" : "text-success"}`}
-              >
-                {formatInt(backlogTotal)} h
+              <p className="mt-2 text-2xl font-semibold tabular-nums">
+                {fteTotalMedio.toFixed(2)}
               </p>
             </CardContent>
           </Card>
@@ -437,7 +436,7 @@ function CapacidadePage() {
                   <TableHead className="text-right">FTE pico</TableHead>
                   <TableHead className="text-right">Operadores atuais</TableHead>
                   <TableHead className="text-right">Utilização</TableHead>
-                  <TableHead className="text-right">Backlog (h)</TableHead>
+                  <TableHead className="text-right">Utiliz. alvo</TableHead>
                   <TableHead className="text-right">FTE adicional</TableHead>
                 </TableRow>
               </TableHeader>
@@ -470,14 +469,8 @@ function CapacidadePage() {
                     <TableCell className={`text-right tabular-nums ${utilClass(r.utilizacao)}`}>
                       {pct(r.utilizacao)}
                     </TableCell>
-                    <TableCell className="text-right tabular-nums">
-                      {r.backlogHoras > 0 ? (
-                        <span className="text-destructive font-semibold">
-                          {formatInt(r.backlogHoras)}
-                        </span>
-                      ) : (
-                        "0"
-                      )}
+                    <TableCell className="text-right tabular-nums text-muted-foreground">
+                      {(r.utilizacaoAlvo * 100).toFixed(0)}%
                     </TableCell>
                     <TableCell className="text-right tabular-nums font-semibold">
                       {r.fteAdicional > 0 ? `+${r.fteAdicional}` : "0"}
@@ -611,13 +604,14 @@ function CapacidadePage() {
         </Card>
 
         <p className="text-xs text-muted-foreground leading-relaxed">
-          Horas padrão = necessidade bruta ÷ (unidades/dia/operador) × horas/dia. FTE
-          necessário = horas padrão do mês ÷ horas disponíveis por operador
-          ({horasPorOperadorMes.toFixed(1)} h), já descontando férias, absenteísmo,
-          treinamento e utilização. FTE adicional = máx(0, teto(FTE pico − operadores
-          atuais)). Recursos compartilhados somam a carga de todos os modelos e etapas
-          antes da comparação. Defaults: stentless 2 un/dia/op, Inner 1 un/dia/op, Full
-          1,5 operador-dia (45) e 2,5 operador-dia (55).
+          Horas padrão = necessidade bruta ÷ (unidades/dia/operador de cronoanálise) ×
+          horas/dia ÷ eficiência da curva de aprendizado (60% no mês 1 → 100% no mês 12).
+          FTE necessário = horas padrão do mês ÷ (horas presentes por operador
+          [{horasPorOperadorMes.toFixed(1)} h, líquidas de férias, absenteísmo de{" "}
+          {(cal.absenteismo * 100).toFixed(0)}% e treinamento] × utilização alvo do
+          recurso). A utilização é por recurso: o gargalo (Tecido) opera a 95% e as
+          demais etapas ficam subordinadas ao seu ritmo, evitando superprodução. FTE
+          adicional = máx(0, teto(FTE pico − operadores atuais)).
         </p>
       </div>
     </div>
