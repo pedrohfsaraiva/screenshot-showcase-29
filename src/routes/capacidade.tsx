@@ -436,7 +436,7 @@ function CapacidadePage() {
                   <TableHead className="text-right">FTE pico</TableHead>
                   <TableHead className="text-right">Operadores atuais</TableHead>
                   <TableHead className="text-right">Utilização</TableHead>
-                  <TableHead className="text-right">Backlog (h)</TableHead>
+                  <TableHead className="text-right">Utiliz. alvo</TableHead>
                   <TableHead className="text-right">FTE adicional</TableHead>
                 </TableRow>
               </TableHeader>
@@ -469,14 +469,8 @@ function CapacidadePage() {
                     <TableCell className={`text-right tabular-nums ${utilClass(r.utilizacao)}`}>
                       {pct(r.utilizacao)}
                     </TableCell>
-                    <TableCell className="text-right tabular-nums">
-                      {r.backlogHoras > 0 ? (
-                        <span className="text-destructive font-semibold">
-                          {formatInt(r.backlogHoras)}
-                        </span>
-                      ) : (
-                        "0"
-                      )}
+                    <TableCell className="text-right tabular-nums text-muted-foreground">
+                      {(r.utilizacaoAlvo * 100).toFixed(0)}%
                     </TableCell>
                     <TableCell className="text-right tabular-nums font-semibold">
                       {r.fteAdicional > 0 ? `+${r.fteAdicional}` : "0"}
