@@ -114,9 +114,12 @@ function CapacidadePage() {
           .reduce((a, d) => a + d.demanda, 0);
         if (demanda <= 0) continue;
         const exp = reverseExplode(demanda, state.stages, state.yields, p.id);
+        // Curva de aprendizado: meses iniciais consomem mais horas padrão.
+        const eff = learningEfficiency(state.periodos.indexOf(periodo));
         for (const r of exp.reconciliacao) {
           const taxa = taxaDe(r.stageId, p.id);
-          const horas = taxa > 0 ? (r.entradaBruta / taxa) * cal.horasPorDia : 0;
+          const horas =
+            taxa > 0 ? ((r.entradaBruta / taxa) * cal.horasPorDia) / eff : 0;
           porEtapaPeriodo[r.stageId] ??= {};
           porEtapaPeriodo[r.stageId][periodo] =
             (porEtapaPeriodo[r.stageId][periodo] ?? 0) + horas;
