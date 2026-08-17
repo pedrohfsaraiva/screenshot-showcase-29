@@ -150,9 +150,12 @@ function CapacidadePage() {
       }
       const horasTotal = Object.values(horasMes).reduce((a, b) => a + b, 0);
       const operadores = operadoresDe(g.id);
-      const capacidadeMes = operadores * horasPorOperadorMes;
+      // Utilização é definida por recurso (gargalo próximo do máximo,
+      // demais subordinados ao ritmo do gargalo).
+      const horasEfetivasOperador = horasPorOperadorMes * g.utilizacaoAlvo;
+      const capacidadeMes = operadores * horasEfetivasOperador;
       const fteMes = periodosFiltrados.map((p) =>
-        horasPorOperadorMes > 0 ? horasMes[p] / horasPorOperadorMes : 0,
+        horasEfetivasOperador > 0 ? horasMes[p] / horasEfetivasOperador : 0,
       );
       const fteMedio =
         fteMes.length > 0 ? fteMes.reduce((a, b) => a + b, 0) / fteMes.length : 0;
@@ -161,10 +164,6 @@ function CapacidadePage() {
         capacidadeMes > 0 && periodosFiltrados.length > 0
           ? horasTotal / (capacidadeMes * periodosFiltrados.length)
           : null;
-      const backlogHoras = periodosFiltrados.reduce(
-        (a, p) => a + Math.max(0, horasMes[p] - capacidadeMes),
-        0,
-      );
       const fteAdicional = Math.max(0, Math.ceil(ftePico - operadores));
       return {
         ...g,
@@ -175,7 +174,6 @@ function CapacidadePage() {
         fteMedio,
         ftePico,
         utilizacao,
-        backlogHoras,
         fteAdicional,
       };
     });
