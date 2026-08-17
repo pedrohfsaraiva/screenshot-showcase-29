@@ -224,7 +224,7 @@ function CapacidadePage() {
 
   const totalHoras = porRecurso.reduce((a, r) => a + r.horasTotal, 0);
   const fteTotalPico = porRecurso.reduce((a, r) => a + r.ftePico, 0);
-  const backlogTotal = porRecurso.reduce((a, r) => a + r.backlogHoras, 0);
+  const fteTotalMedio = porRecurso.reduce((a, r) => a + r.fteMedio, 0);
 
   const pct = (v: number | null) =>
     v === null || !Number.isFinite(v) ? "—" : `${Math.min(v * 100, 9999).toFixed(0)}%`;
@@ -298,7 +298,6 @@ function CapacidadePage() {
                 ["feriasDiasAno", "Férias (dias/ano)", 1, false],
                 ["absenteismo", "Absenteísmo (%)", 0.5, true],
                 ["treinamento", "Treinamento (%)", 0.5, true],
-                ["utilizacao", "Utilização (%)", 1, true],
               ] as const
             ).map(([key, label, step, isPct]) => (
               <div key={key} className="space-y-1">
@@ -345,12 +344,10 @@ function CapacidadePage() {
           <Card>
             <CardContent className="p-5">
               <p className="text-xs uppercase tracking-wider text-muted-foreground">
-                Backlog acumulado
+                FTE médio no horizonte
               </p>
-              <p
-                className={`mt-2 text-2xl font-semibold tabular-nums ${backlogTotal > 0 ? "text-destructive" : "text-success"}`}
-              >
-                {formatInt(backlogTotal)} h
+              <p className="mt-2 text-2xl font-semibold tabular-nums">
+                {fteTotalMedio.toFixed(2)}
               </p>
             </CardContent>
           </Card>
