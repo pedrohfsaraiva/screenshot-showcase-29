@@ -102,12 +102,33 @@ export function ScenarioProvider({ children }: { children: ReactNode }) {
     const persisted = localStorageAdapter.load<ScenarioState>(STORAGE_KEY);
     if (persisted && persisted.periodos && persisted.stages) {
       // Compat: garante campos novos após updates de schema.
+      const cal = persisted.calendar ?? defaultCalendar;
       setState({
         ...defaultState(),
         ...persisted,
         capacity: persisted.capacity ?? {},
-        calendar: { ...defaultCalendar, ...(persisted.calendar ?? {}) },
+        calendar: {
+          diasUteisPorMes: cal.diasUteisPorMes ?? defaultCalendar.diasUteisPorMes,
+          horasPorDia: cal.horasPorDia ?? defaultCalendar.horasPorDia,
+          feriasDiasAno: cal.feriasDiasAno ?? defaultCalendar.feriasDiasAno,
+          absenteismo: cal.absenteismo ?? defaultCalendar.absenteismo,
+          treinamento: cal.treinamento ?? defaultCalendar.treinamento,
+        },
       });
+    } else {
+      // Migração: preserva a demanda e os operadores lançados na versão anterior.
+      const legacy = localStorageAdapter.load<ScenarioState>("scenario-default-v5");
+      if (legacy?.demand) {
+        setState((s) => ({
+          ...s,
+          demand: legacy.demand,
+          capacity: Object.fromEntries(
+            Object.entries(legacy.capacity ?? {})
+              .filter(([k]) => k.startsWith("res:"))
+              .map(([k, v]) => [k, { ...v, taxaPorDia45: null, taxaPorDia55: null }]),
+          ),
+        }));
+      }
     }
     setHydrated(true);
   }, []);
