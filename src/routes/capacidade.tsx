@@ -604,13 +604,14 @@ function CapacidadePage() {
         </Card>
 
         <p className="text-xs text-muted-foreground leading-relaxed">
-          Horas padrão = necessidade bruta ÷ (unidades/dia/operador) × horas/dia. FTE
-          necessário = horas padrão do mês ÷ horas disponíveis por operador
-          ({horasPorOperadorMes.toFixed(1)} h), já descontando férias, absenteísmo,
-          treinamento e utilização. FTE adicional = máx(0, teto(FTE pico − operadores
-          atuais)). Recursos compartilhados somam a carga de todos os modelos e etapas
-          antes da comparação. Defaults: stentless 2 un/dia/op, Inner 1 un/dia/op, Full
-          1,5 operador-dia (45) e 2,5 operador-dia (55).
+          Horas padrão = necessidade bruta ÷ (unidades/dia/operador de cronoanálise) ×
+          horas/dia ÷ eficiência da curva de aprendizado (60% no mês 1 → 100% no mês 12).
+          FTE necessário = horas padrão do mês ÷ (horas presentes por operador
+          [{horasPorOperadorMes.toFixed(1)} h, líquidas de férias, absenteísmo de{" "}
+          {(cal.absenteismo * 100).toFixed(0)}% e treinamento] × utilização alvo do
+          recurso). A utilização é por recurso: o gargalo (Tecido) opera a 95% e as
+          demais etapas ficam subordinadas ao seu ritmo, evitando superprodução. FTE
+          adicional = máx(0, teto(FTE pico − operadores atuais)).
         </p>
       </div>
     </div>
