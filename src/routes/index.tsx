@@ -460,7 +460,7 @@ function RtyKpi({
                 >
                   <span className="text-xs text-muted-foreground">{p.id}</span>
                   <span className="text-lg font-semibold">
-                    {v === null ? "—" : truncPct(v, 3)}
+                    {v === null ? "—" : truncPct(v, 2)}
                   </span>
                 </div>
               );
@@ -485,12 +485,12 @@ function RtyKpi({
           </span>
         </div>
         <div className="mt-2 text-2xl font-semibold tabular-nums text-right">
-          {v === null ? "—" : truncPct(v, 3)}
+          {v === null ? "—" : truncPct(v, 2)}
         </div>
         <div className="mt-1 text-xs text-muted-foreground">
           {v === null
             ? "Yields provisórios impedem o cálculo"
-            : "Produto dos gates ativos · truncado em 3 casas"}
+            : "Produto dos gates ativos · truncado em 2 casas"}
         </div>
       </CardContent>
     </Card>
