@@ -258,6 +258,8 @@ function CapacidadePage() {
   const totalHoras = porRecurso.reduce((a, r) => a + r.horasTotal, 0);
   const fteTotalPico = porRecurso.reduce((a, r) => a + r.ftePico, 0);
   const fteTotalMedio = porRecurso.reduce((a, r) => a + r.fteMedio, 0);
+  const fteTemporario = Math.max(0, fteTotalPico - fteTotalMedio);
+
 
   const pct = (v: number | null) =>
     v === null || !Number.isFinite(v) ? "—" : `${Math.min(v * 100, 9999).toFixed(0)}%`;
