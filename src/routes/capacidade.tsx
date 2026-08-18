@@ -353,7 +353,7 @@ function CapacidadePage() {
         </Card>
 
         {/* KPIs */}
-        <div className="grid gap-4 sm:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <Card>
             <CardContent className="p-5">
               <p className="text-xs uppercase tracking-wider text-muted-foreground">
@@ -367,22 +367,57 @@ function CapacidadePage() {
           <Card>
             <CardContent className="p-5">
               <p className="text-xs uppercase tracking-wider text-muted-foreground">
-                FTE necessário no pico (soma dos recursos)
+                FTE base (contratos fixos)
               </p>
               <p className="mt-2 text-2xl font-semibold tabular-nums">
-                {fteTotalPico.toFixed(2)}
+                {fteTotalMedio.toFixed(2)}
+              </p>
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                Média do horizonte — quadro permanente.
               </p>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="p-5">
               <p className="text-xs uppercase tracking-wider text-muted-foreground">
-                FTE médio no horizonte
+                FTE temporário / horas extras
               </p>
               <p className="mt-2 text-2xl font-semibold tabular-nums">
-                {fteTotalMedio.toFixed(2)}
+                {fteTemporario.toFixed(2)}
+              </p>
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                Gap do pico sobre o quadro base.
               </p>
             </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-5">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-xs uppercase tracking-wider text-muted-foreground">
+                    FTE no pico
+                  </p>
+                  <p className="mt-2 text-2xl font-semibold tabular-nums">
+                    {fteTotalPico.toFixed(2)}
+                  </p>
+                </div>
+                <label className="flex cursor-pointer items-center gap-2 text-xs text-muted-foreground">
+                  <input
+                    type="checkbox"
+                    checked={heijunka}
+                    onChange={(e) => setHeijunka(e.target.checked)}
+                    className="h-4 w-4 accent-[var(--color-primary)]"
+                  />
+                  Nivelar (Heijunka)
+                </label>
+              </div>
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                {heijunka
+                  ? "Build-ahead ativo: antecipa produção nos meses ociosos."
+                  : "Sem nivelamento: pico reflete a demanda bruta do mês."}
+              </p>
+            </CardContent>
+
           </Card>
         </div>
 
