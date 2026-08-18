@@ -73,6 +73,8 @@ function CapacidadePage() {
   const { state, setCapacity, setCalendar } = useScenario();
   const [ano, setAno] = useState<string>("todos");
   const [tamanho, setTamanho] = useState<string>("todos");
+  const [heijunka, setHeijunka] = useState(false);
+
 
   const anos = useMemo(
     () => Array.from(new Set(state.periodos.map((p) => p.slice(0, 4)))).sort(),
