@@ -139,6 +139,30 @@ function CapacidadePage() {
     cal.horasPorDia,
   ]);
 
+  /**
+   * Nivelamento de produção (Heijunka / build-ahead): antecipa carga dos meses
+   * de pico para os meses ociosos anteriores, respeitando a restrição de que
+   * nunca se produz depois do necessário (cumulativo nivelado ≥ cumulativo original).
+   */
+  const nivelar = (horas: number[]): number[] => {
+    if (horas.length === 0) return horas;
+    let acc = 0;
+    let nivel = 0;
+    horas.forEach((h, i) => {
+      acc += h;
+      nivel = Math.max(nivel, acc / (i + 1));
+    });
+    const out: number[] = [];
+    let produzido = 0;
+    const total = horas.reduce((a, b) => a + b, 0);
+    for (let i = 0; i < horas.length; i++) {
+      const h = Math.min(nivel, total - produzido);
+      out.push(Math.max(0, h));
+      produzido += h;
+    }
+    return out;
+  };
+
   /** Agregação por recurso e por período. */
   const porRecurso = useMemo(() => {
     return resourceGroups.map((g) => {
@@ -147,6 +171,12 @@ function CapacidadePage() {
         let h = 0;
         for (const sid of g.stageIds) h += carga.porEtapaPeriodo[sid]?.[periodo] ?? 0;
         horasMes[periodo] = h;
+      }
+      if (heijunka) {
+        const niveladas = nivelar(periodosFiltrados.map((p) => horasMes[p] ?? 0));
+        periodosFiltrados.forEach((p, i) => {
+          horasMes[p] = niveladas[i];
+        });
       }
       const horasTotal = Object.values(horasMes).reduce((a, b) => a + b, 0);
       const operadores = operadoresDe(g.id);
@@ -177,7 +207,8 @@ function CapacidadePage() {
         fteAdicional,
       };
     });
-  }, [carga, periodosFiltrados, state.capacity, horasPorOperadorMes]);
+  }, [carga, periodosFiltrados, state.capacity, horasPorOperadorMes, heijunka]);
+
 
   /** Gargalo mês a mês: recurso com maior utilização. */
   /** Utilização global mês a mês (carga total vs. capacidade instalada total). */
