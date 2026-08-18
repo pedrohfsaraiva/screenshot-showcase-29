@@ -55,13 +55,15 @@ export const Route = createFileRoute("/")({
 type ModelFilter = "all" | ModelId;
 type YearFilter = "all" | "Y1" | "Y2" | "Y3";
 
-// Trunca sem arredondar para cima; usado no RTY.
-// O RTY vem em escala de fração de percentual, por isso o fator adicional de 100.
+// RTY é o produto dos FTY de cada etapa (fração 0–1). Exibimos em %,
+// truncando sem arredondar para cima e travando logicamente em 100%.
 function truncPct(v: number, digits: number): string {
   const factor = Math.pow(10, digits);
-  const truncated = Math.trunc(v * 100 * 100 * factor) / factor;
+  const clamped = Math.min(Math.max(v, 0), 1);
+  const truncated = Math.trunc(clamped * 100 * factor) / factor;
   return `${truncated.toFixed(digits)}%`;
 }
+
 
 function Dashboard() {
   const { state, setViewMode } = useScenario();

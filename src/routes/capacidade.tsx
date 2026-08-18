@@ -73,6 +73,8 @@ function CapacidadePage() {
   const { state, setCapacity, setCalendar } = useScenario();
   const [ano, setAno] = useState<string>("todos");
   const [tamanho, setTamanho] = useState<string>("todos");
+  const [heijunka, setHeijunka] = useState(false);
+
 
   const anos = useMemo(
     () => Array.from(new Set(state.periodos.map((p) => p.slice(0, 4)))).sort(),
@@ -139,6 +141,30 @@ function CapacidadePage() {
     cal.horasPorDia,
   ]);
 
+  /**
+   * Nivelamento de produção (Heijunka / build-ahead): antecipa carga dos meses
+   * de pico para os meses ociosos anteriores, respeitando a restrição de que
+   * nunca se produz depois do necessário (cumulativo nivelado ≥ cumulativo original).
+   */
+  const nivelar = (horas: number[]): number[] => {
+    if (horas.length === 0) return horas;
+    let acc = 0;
+    let nivel = 0;
+    horas.forEach((h, i) => {
+      acc += h;
+      nivel = Math.max(nivel, acc / (i + 1));
+    });
+    const out: number[] = [];
+    let produzido = 0;
+    const total = horas.reduce((a, b) => a + b, 0);
+    for (let i = 0; i < horas.length; i++) {
+      const h = Math.min(nivel, total - produzido);
+      out.push(Math.max(0, h));
+      produzido += h;
+    }
+    return out;
+  };
+
   /** Agregação por recurso e por período. */
   const porRecurso = useMemo(() => {
     return resourceGroups.map((g) => {
@@ -147,6 +173,12 @@ function CapacidadePage() {
         let h = 0;
         for (const sid of g.stageIds) h += carga.porEtapaPeriodo[sid]?.[periodo] ?? 0;
         horasMes[periodo] = h;
+      }
+      if (heijunka) {
+        const niveladas = nivelar(periodosFiltrados.map((p) => horasMes[p] ?? 0));
+        periodosFiltrados.forEach((p, i) => {
+          horasMes[p] = niveladas[i];
+        });
       }
       const horasTotal = Object.values(horasMes).reduce((a, b) => a + b, 0);
       const operadores = operadoresDe(g.id);
@@ -177,7 +209,8 @@ function CapacidadePage() {
         fteAdicional,
       };
     });
-  }, [carga, periodosFiltrados, state.capacity, horasPorOperadorMes]);
+  }, [carga, periodosFiltrados, state.capacity, horasPorOperadorMes, heijunka]);
+
 
   /** Gargalo mês a mês: recurso com maior utilização. */
   /** Utilização global mês a mês (carga total vs. capacidade instalada total). */
@@ -225,6 +258,8 @@ function CapacidadePage() {
   const totalHoras = porRecurso.reduce((a, r) => a + r.horasTotal, 0);
   const fteTotalPico = porRecurso.reduce((a, r) => a + r.ftePico, 0);
   const fteTotalMedio = porRecurso.reduce((a, r) => a + r.fteMedio, 0);
+  const fteTemporario = Math.max(0, fteTotalPico - fteTotalMedio);
+
 
   const pct = (v: number | null) =>
     v === null || !Number.isFinite(v) ? "—" : `${Math.min(v * 100, 9999).toFixed(0)}%`;
@@ -320,7 +355,7 @@ function CapacidadePage() {
         </Card>
 
         {/* KPIs */}
-        <div className="grid gap-4 sm:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <Card>
             <CardContent className="p-5">
               <p className="text-xs uppercase tracking-wider text-muted-foreground">
@@ -334,22 +369,57 @@ function CapacidadePage() {
           <Card>
             <CardContent className="p-5">
               <p className="text-xs uppercase tracking-wider text-muted-foreground">
-                FTE necessário no pico (soma dos recursos)
+                FTE base (contratos fixos)
               </p>
               <p className="mt-2 text-2xl font-semibold tabular-nums">
-                {fteTotalPico.toFixed(2)}
+                {fteTotalMedio.toFixed(2)}
+              </p>
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                Média do horizonte — quadro permanente.
               </p>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="p-5">
               <p className="text-xs uppercase tracking-wider text-muted-foreground">
-                FTE médio no horizonte
+                FTE temporário / horas extras
               </p>
               <p className="mt-2 text-2xl font-semibold tabular-nums">
-                {fteTotalMedio.toFixed(2)}
+                {fteTemporario.toFixed(2)}
+              </p>
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                Gap do pico sobre o quadro base.
               </p>
             </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-5">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-xs uppercase tracking-wider text-muted-foreground">
+                    FTE no pico
+                  </p>
+                  <p className="mt-2 text-2xl font-semibold tabular-nums">
+                    {fteTotalPico.toFixed(2)}
+                  </p>
+                </div>
+                <label className="flex cursor-pointer items-center gap-2 text-xs text-muted-foreground">
+                  <input
+                    type="checkbox"
+                    checked={heijunka}
+                    onChange={(e) => setHeijunka(e.target.checked)}
+                    className="h-4 w-4 accent-[var(--color-primary)]"
+                  />
+                  Nivelar (Heijunka)
+                </label>
+              </div>
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                {heijunka
+                  ? "Build-ahead ativo: antecipa produção nos meses ociosos."
+                  : "Sem nivelamento: pico reflete a demanda bruta do mês."}
+              </p>
+            </CardContent>
+
           </Card>
         </div>
 
