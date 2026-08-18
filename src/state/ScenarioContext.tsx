@@ -100,13 +100,26 @@ export function ScenarioProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const persisted = localStorageAdapter.load<ScenarioState>(STORAGE_KEY);
+    const legacy = localStorageAdapter.load<ScenarioState>("scenario-default-v5");
+    const legacyDemandaTotal = (legacy?.demand ?? []).reduce((a, d) => a + d.demanda, 0);
+
     if (persisted && persisted.periodos && persisted.stages) {
       // Compat: garante campos novos após updates de schema.
       const cal = persisted.calendar ?? defaultCalendar;
+      const demandaTotal = (persisted.demand ?? []).reduce((a, d) => a + d.demanda, 0);
+      const capacityAtual = persisted.capacity ?? {};
+      const precisaMigrar = demandaTotal === 0 && legacyDemandaTotal > 0;
       setState({
         ...defaultState(),
         ...persisted,
-        capacity: persisted.capacity ?? {},
+        demand: precisaMigrar ? legacy!.demand : persisted.demand,
+        capacity: precisaMigrar
+          ? Object.fromEntries(
+              Object.entries(legacy?.capacity ?? {})
+                .filter(([k]) => k.startsWith("res:"))
+                .map(([k, v]) => [k, { ...v, taxaPorDia45: null, taxaPorDia55: null }]),
+            )
+          : capacityAtual,
         calendar: {
           diasUteisPorMes: cal.diasUteisPorMes ?? defaultCalendar.diasUteisPorMes,
           horasPorDia: cal.horasPorDia ?? defaultCalendar.horasPorDia,
@@ -115,23 +128,21 @@ export function ScenarioProvider({ children }: { children: ReactNode }) {
           treinamento: cal.treinamento ?? defaultCalendar.treinamento,
         },
       });
-    } else {
+    } else if (legacy?.demand) {
       // Migração: preserva a demanda e os operadores lançados na versão anterior.
-      const legacy = localStorageAdapter.load<ScenarioState>("scenario-default-v5");
-      if (legacy?.demand) {
-        setState((s) => ({
-          ...s,
-          demand: legacy.demand,
-          capacity: Object.fromEntries(
-            Object.entries(legacy.capacity ?? {})
-              .filter(([k]) => k.startsWith("res:"))
-              .map(([k, v]) => [k, { ...v, taxaPorDia45: null, taxaPorDia55: null }]),
-          ),
-        }));
-      }
+      setState((s) => ({
+        ...s,
+        demand: legacy.demand,
+        capacity: Object.fromEntries(
+          Object.entries(legacy.capacity ?? {})
+            .filter(([k]) => k.startsWith("res:"))
+            .map(([k, v]) => [k, { ...v, taxaPorDia45: null, taxaPorDia55: null }]),
+        ),
+      }));
     }
     setHydrated(true);
   }, []);
+
 
   useEffect(() => {
     if (hydrated) localStorageAdapter.save(STORAGE_KEY, state);
