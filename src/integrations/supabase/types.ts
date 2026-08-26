@@ -21,6 +21,7 @@ export type Database = {
           id_componente: number
           identificacao: string
           tamanho: string
+          updated_at: string
         }
         Insert: {
           created_at?: string
@@ -28,6 +29,7 @@ export type Database = {
           id_componente: number
           identificacao: string
           tamanho: string
+          updated_at?: string
         }
         Update: {
           created_at?: string
@@ -35,6 +37,7 @@ export type Database = {
           id_componente?: number
           identificacao?: string
           tamanho?: string
+          updated_at?: string
         }
         Relationships: []
       }
@@ -46,6 +49,7 @@ export type Database = {
           id_componente: number
           nome_indicador: string
           rendimento: number
+          updated_at: string
         }
         Insert: {
           created_at?: string
@@ -54,6 +58,7 @@ export type Database = {
           id_componente: number
           nome_indicador: string
           rendimento: number
+          updated_at?: string
         }
         Update: {
           created_at?: string
@@ -62,6 +67,7 @@ export type Database = {
           id_componente?: number
           nome_indicador?: string
           rendimento?: number
+          updated_at?: string
         }
         Relationships: [
           {
