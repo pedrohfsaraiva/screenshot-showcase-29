@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
+import { useViewState } from "@/state/GridViewContext";
 import { toast } from "sonner";
 import {
   Area,
@@ -47,9 +48,12 @@ export const Route = createFileRoute("/cenarios")({
 
 function CenariosPage() {
   const { state, setDemand, setDemandBulk, resetToSeed } = useScenario();
-  const [modelo, setModelo] = useState<ModelId>(
-    (state.products[0]?.id as ModelId) ?? "TR1P-45",
-  );
+  const [view, patchView] = useViewState("cenarios", {
+    modelo: (state.products[0]?.id as ModelId) ?? "TR1P-45",
+  });
+  const modelo = view.modelo as ModelId;
+  const setModelo = (v: ModelId) => patchView({ modelo: v });
+
 
   const demandaDoModelo = useMemo(
     () => state.demand.filter((d) => d.modelId === modelo),
