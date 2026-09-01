@@ -71,9 +71,16 @@ function num(v: string): number | null {
 
 function CapacidadePage() {
   const { state, setCapacity, setCalendar } = useScenario();
-  const [ano, setAno] = useState<string>("todos");
-  const [tamanho, setTamanho] = useState<string>("todos");
-  const [heijunka, setHeijunka] = useState(false);
+  const [view, patchView] = useViewState("capacidade", {
+    ano: "todos",
+    tamanho: "todos",
+    heijunka: false,
+  });
+  const { ano, tamanho, heijunka } = view;
+  const setAno = (v: string) => patchView({ ano: v });
+  const setTamanho = (v: string) => patchView({ tamanho: v });
+  const setHeijunka = (v: boolean) => patchView({ heijunka: v });
+
 
 
   const anos = useMemo(
