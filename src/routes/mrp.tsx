@@ -135,9 +135,13 @@ function MrpPage() {
       for (const modelo of modelos) {
         const dem = demandaAnual[modelo] ?? [0, 0, 0];
         const key = `${modelo}__${material.id}`;
-        const y1 = dem[0] * qty;
-        const y2 = dem[1] * qty;
-        const y3 = dem[2] * qty;
+        // Necessidade real = necessidade aprovada ÷ rendimento acumulado (ceil).
+        const rend = rendimentoAcumulado(modelo, material.id);
+        const bruta = (aprovada: number) =>
+          definida ? Math.ceil(aprovada / rend) : 0;
+        const y1 = bruta(dem[0] * qty);
+        const y2 = bruta(dem[1] * qty);
+        const y3 = bruta(dem[2] * qty);
         const prev = acc.get(key);
         if (prev) {
           prev.y1 += y1;
@@ -145,6 +149,7 @@ function MrpPage() {
           prev.y3 += y3;
           prev.total = prev.y1 + prev.y2 + prev.y3;
           prev.definida = prev.definida && definida;
+          prev.rendimento = Math.min(prev.rendimento, rend);
         } else {
           acc.set(key, {
             key,
@@ -154,6 +159,7 @@ function MrpPage() {
             categoria: material.categoria,
             unidade: material.unidade,
             definida,
+            rendimento: rend,
             y1,
             y2,
             y3,
