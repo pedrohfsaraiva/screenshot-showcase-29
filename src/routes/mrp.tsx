@@ -301,7 +301,7 @@ function MrpPage() {
               {rows.length > 0 ? (
                 <tfoot>
                   <tr className="border-t border-border bg-muted/30">
-                    <td colSpan={5} className="px-4 py-3 text-xs uppercase tracking-wider text-muted-foreground">
+                    <td colSpan={6} className="px-4 py-3 text-xs uppercase tracking-wider text-muted-foreground">
                       Total geral (linhas filtradas)
                     </td>
                     <td className="px-4 py-3 text-right tabular-nums font-semibold">
