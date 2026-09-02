@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { PageHeader } from "@/components/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -10,8 +10,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { DataGrid, type DataGridColumn } from "@/components/datagrid/DataGrid";
-import { useViewState } from "@/state/GridViewContext";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { useScenario } from "@/state/ScenarioContext";
 import { formatInt } from "@/lib/format";
 import type { ModelId } from "@/domain/types";
@@ -24,11 +30,6 @@ export const Route = createFileRoute("/mrp")({
         name: "description",
         content:
           "Consolidação anual da necessidade bruta de materiais nos 3 anos calendário (2027–2029).",
-      },
-      { property: "og:title", content: "MRP Líquida · Topaz MRP" },
-      {
-        property: "og:description",
-        content: "Necessidade bruta consolidada por ano calendário em grid virtualizado.",
       },
     ],
   }),
@@ -53,16 +54,17 @@ interface Row {
 
 function MrpPage() {
   const { state } = useScenario();
-  const [view, patchView] = useViewState("mrp", { modeloFiltro: "all", busca: "" });
-  const modeloFiltro = view.modeloFiltro as ModelFilter;
-  const busca = view.busca as string;
+  const [modeloFiltro, setModeloFiltro] = useState<ModelFilter>("all");
+  const [busca, setBusca] = useState("");
 
   const matById = useMemo(
     () => new Map(state.materials.map((m) => [m.id, m])),
     [state.materials],
   );
 
+  // Necessidade bruta anual por (modelo, material) — soma mensal × qtyPer da BOM.
   const rows = useMemo<Row[]>(() => {
+    // Demanda por (modelo, ano). Ano = índice do período / 12.
     const demandaAnual: Record<string, [number, number, number]> = {};
     for (const p of state.products) {
       demandaAnual[p.id] = [0, 0, 0];
@@ -155,104 +157,6 @@ function MrpPage() {
     );
   }, [rows]);
 
-  const columns = useMemo<DataGridColumn<Row>[]>(
-    () => [
-      {
-        id: "modelo",
-        header: "Modelo",
-        width: 110,
-        render: (r) => <span className="font-medium">{r.modelo}</span>,
-      },
-      {
-        id: "componente",
-        header: "Componente",
-        width: 170,
-        className: "text-muted-foreground text-xs",
-        render: (r) => r.materialId,
-      },
-      {
-        id: "descricao",
-        header: "Descrição",
-        width: 260,
-        render: (r) => (
-          <span>
-            {r.descricao}
-            {!r.definida ? (
-              <span className="ml-2 text-[10px] uppercase tracking-wider text-warning">
-                dado a confirmar
-              </span>
-            ) : null}
-          </span>
-        ),
-      },
-      {
-        id: "categoria",
-        header: "Categoria",
-        width: 170,
-        className: "text-muted-foreground",
-        render: (r) => r.categoria,
-      },
-      {
-        id: "unidade",
-        header: "Unidade",
-        width: 90,
-        className: "text-muted-foreground",
-        render: (r) => r.unidade,
-      },
-      {
-        id: "y1",
-        header: "Ano 1 · 2027",
-        width: 130,
-        align: "right",
-        render: (r) => (r.definida ? formatInt(r.y1) : "—"),
-      },
-      {
-        id: "y2",
-        header: "Ano 2 · 2028",
-        width: 130,
-        align: "right",
-        render: (r) => (r.definida ? formatInt(r.y2) : "—"),
-      },
-      {
-        id: "y3",
-        header: "Ano 3 · 2029",
-        width: 130,
-        align: "right",
-        render: (r) => (r.definida ? formatInt(r.y3) : "—"),
-      },
-      {
-        id: "total",
-        header: "Total 3 Anos",
-        width: 140,
-        align: "right",
-        className: "font-semibold text-primary",
-        render: (r) => (r.definida ? formatInt(r.total) : "—"),
-      },
-    ],
-    [],
-  );
-
-  const footer =
-    rows.length > 0 ? (
-      <>
-        <div className="px-2 py-2.5 text-xs uppercase tracking-wider text-muted-foreground" style={{ width: 800, minWidth: 800 }}>
-          Total geral (linhas filtradas)
-        </div>
-        <div className="px-2 py-2.5 text-right tabular-nums font-semibold" style={{ width: 130, minWidth: 130 }}>
-          {formatInt(totals.y1)}
-        </div>
-        <div className="px-2 py-2.5 text-right tabular-nums font-semibold" style={{ width: 130, minWidth: 130 }}>
-          {formatInt(totals.y2)}
-        </div>
-        <div className="px-2 py-2.5 text-right tabular-nums font-semibold" style={{ width: 130, minWidth: 130 }}>
-          {formatInt(totals.y3)}
-        </div>
-        <div className="px-2 py-2.5 text-right tabular-nums font-semibold text-primary" style={{ width: 140, minWidth: 140 }}>
-          {formatInt(totals.total)}
-        </div>
-      </>
-    ) : null;
-
   return (
     <div>
       <PageHeader
@@ -263,12 +167,12 @@ function MrpPage() {
             <Input
               placeholder="Buscar componente…"
               value={busca}
-              onChange={(e) => patchView({ busca: e.target.value })}
+              onChange={(e) => setBusca(e.target.value)}
               className="w-56"
             />
             <Select
               value={modeloFiltro}
-              onValueChange={(v) => patchView({ modeloFiltro: v })}
+              onValueChange={(v) => setModeloFiltro(v as ModelFilter)}
             >
               <SelectTrigger className="w-48">
                 <SelectValue />
@@ -287,20 +191,85 @@ function MrpPage() {
       />
       <div className="p-6">
         <Card>
-          <CardContent className="p-0">
-            <DataGrid
-              rows={rows}
-              columns={columns}
-              rowKey={(r) => r.key}
-              height={640}
-              emptyMessage="Nenhuma necessidade calculada. Verifique demanda e quantidades da BOM."
-              footer={footer}
-            />
+          <CardContent className="p-0 overflow-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[110px]">Modelo</TableHead>
+                  <TableHead className="w-[140px]">Componente</TableHead>
+                  <TableHead>Descrição</TableHead>
+                  <TableHead>Categoria</TableHead>
+                  <TableHead>Unidade</TableHead>
+                  <TableHead className="text-right">Ano 1 · 2027</TableHead>
+                  <TableHead className="text-right">Ano 2 · 2028</TableHead>
+                  <TableHead className="text-right">Ano 3 · 2029</TableHead>
+                  <TableHead className="text-right">Total 3 Anos</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {rows.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={9} className="text-center text-sm text-muted-foreground py-10">
+                      Nenhuma necessidade calculada. Verifique demanda e quantidades da BOM.
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  rows.map((r) => (
+                    <TableRow key={r.key}>
+                      <TableCell className="font-medium">{r.modelo}</TableCell>
+                      <TableCell className="text-muted-foreground text-xs">
+                        {r.materialId}
+                      </TableCell>
+                      <TableCell>
+                        {r.descricao}
+                        {!r.definida ? (
+                          <span className="ml-2 text-[10px] uppercase tracking-wider text-warning">
+                            dado a confirmar
+                          </span>
+                        ) : null}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">{r.categoria}</TableCell>
+                      <TableCell className="text-muted-foreground">{r.unidade}</TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        {r.definida ? formatInt(r.y1) : "—"}
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        {r.definida ? formatInt(r.y2) : "—"}
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        {r.definida ? formatInt(r.y3) : "—"}
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums font-semibold text-primary">
+                        {r.definida ? formatInt(r.total) : "—"}
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+              {rows.length > 0 ? (
+                <tfoot>
+                  <tr className="border-t border-border bg-muted/30">
+                    <td colSpan={5} className="px-4 py-3 text-xs uppercase tracking-wider text-muted-foreground">
+                      Total geral (linhas filtradas)
+                    </td>
+                    <td className="px-4 py-3 text-right tabular-nums font-semibold">
+                      {formatInt(totals.y1)}
+                    </td>
+                    <td className="px-4 py-3 text-right tabular-nums font-semibold">
+                      {formatInt(totals.y2)}
+                    </td>
+                    <td className="px-4 py-3 text-right tabular-nums font-semibold">
+                      {formatInt(totals.y3)}
+                    </td>
+                    <td className="px-4 py-3 text-right tabular-nums font-semibold text-primary">
+                      {formatInt(totals.total)}
+                    </td>
+                  </tr>
+                </tfoot>
+              ) : null}
+            </Table>
           </CardContent>
         </Card>
-        <p className="mt-3 text-xs text-muted-foreground">
-          {rows.length} linhas · grid virtualizado para milhares de registros.
-        </p>
       </div>
     </div>
   );

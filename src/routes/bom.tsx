@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo } from "react";
+import { useState } from "react";
 import { PageHeader } from "@/components/PageHeader";
 import { ProvisionalBadge } from "@/components/ProvisionalBadge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -11,11 +11,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { DataGrid, type DataGridColumn } from "@/components/datagrid/DataGrid";
-import { EditableNumberCell } from "@/components/datagrid/EditableNumberCell";
-import { useViewState } from "@/state/GridViewContext";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { useScenario } from "@/state/ScenarioContext";
-import type { BomLine } from "@/domain/types";
 
 export const Route = createFileRoute("/bom")({
   head: () => ({
@@ -25,158 +29,103 @@ export const Route = createFileRoute("/bom")({
         name: "description",
         content: "Lista de materiais (Bill of Materials) da válvula Topaz.",
       },
-      { property: "og:title", content: "BOM · Topaz MRP" },
-      {
-        property: "og:description",
-        content: "Estrutura de produto da válvula Topaz com edição inline em alta densidade.",
-      },
     ],
   }),
   component: BomPage,
 });
 
-interface Linha {
-  line: BomLine;
-  i: number;
-}
-
 function BomPage() {
   const { state, setBomQty } = useScenario();
-  const [view, patchView] = useViewState("bom", { tamanho: "todos", busca: "" });
-  const tamanho = view.tamanho as string;
-  const busca = view.busca as string;
+  const matById = new Map(state.materials.map((m) => [m.id, m]));
+  const [tamanho, setTamanho] = useState<string>("todos");
 
-  const matById = useMemo(
-    () => new Map(state.materials.map((m) => [m.id, m])),
-    [state.materials],
-  );
-
-  const linhas = useMemo<Linha[]>(() => {
-    const q = busca.trim().toLowerCase();
-    return state.bom
-      .map((line, i) => ({ line, i }))
-      .filter(({ line }) => tamanho === "todos" || !line.modelId || line.modelId === tamanho)
-      .filter(({ line }) => {
-        if (!q) return true;
-        const mat = matById.get(line.childId);
-        return (
-          line.childId.toLowerCase().includes(q) ||
-          line.stageId.toLowerCase().includes(q) ||
-          (mat?.descricao ?? "").toLowerCase().includes(q)
-        );
-      });
-  }, [state.bom, tamanho, busca, matById]);
-
-  const columns = useMemo<DataGridColumn<Linha>[]>(
-    () => [
-      {
-        id: "parent",
-        header: "Pai",
-        width: 130,
-        render: ({ line }) => <span className="font-medium">{line.parentId}</span>,
-      },
-      {
-        id: "child",
-        header: "Filho",
-        width: 240,
-        render: ({ line }) => matById.get(line.childId)?.descricao ?? line.childId,
-      },
-      {
-        id: "modelo",
-        header: "Modelo",
-        width: 110,
-        className: "text-muted-foreground",
-        render: ({ line }) => line.modelId ?? "Ambos",
-      },
-      {
-        id: "etapa",
-        header: "Etapa",
-        width: 200,
-        className: "text-muted-foreground text-xs",
-        render: ({ line }) => line.stageId,
-      },
-      {
-        id: "qty",
-        header: "Qtd por válvula",
-        width: 140,
-        align: "right",
-        editable: true,
-        render: ({ line, i }) => (
-          <EditableNumberCell
-            value={line.qtyPer}
-            onCommit={(v) => setBomQty(i, v)}
-            validate={(v) =>
-              v !== null && v > 100000 ? "Quantidade acima do limite plausível" : null
-            }
-          />
-        ),
-      },
-      {
-        id: "unidade",
-        header: "Unidade",
-        width: 100,
-        className: "text-muted-foreground",
-        render: ({ line }) => matById.get(line.childId)?.unidade ?? "—",
-      },
-      {
-        id: "status",
-        header: "Status",
-        width: 170,
-        render: ({ line }) =>
-          line.qtyPer === null ? (
-            <ProvisionalBadge />
-          ) : (
-            <span className="text-xs text-success">Definido</span>
-          ),
-      },
-    ],
-    [matById, setBomQty],
-  );
+  const linhas = state.bom
+    .map((line, i) => ({ line, i }))
+    .filter(
+      ({ line }) =>
+        tamanho === "todos" || !line.modelId || line.modelId === tamanho,
+    );
 
   return (
     <div>
       <PageHeader
         title="BOM · Estrutura de Produto"
-        subtitle="Edição inline com navegação por teclado (Setas, Tab, Enter). Quantidades DADO A CONFIRMAR não são aprovadas para compra."
+        subtitle="Quantidades marcadas como DADO A CONFIRMAR não podem ser tratadas como aprovadas para compra."
         actions={
-          <div className="flex items-center gap-2">
-            <Input
-              placeholder="Buscar componente…"
-              value={busca}
-              onChange={(e) => patchView({ busca: e.target.value })}
-              className="w-56"
-            />
-            <Select value={tamanho} onValueChange={(v) => patchView({ tamanho: v })}>
-              <SelectTrigger className="w-52">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="todos">Todos os tamanhos</SelectItem>
-                {state.products.map((p) => (
-                  <SelectItem key={p.id} value={p.id}>
-                    {p.nome}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          <Select value={tamanho} onValueChange={setTamanho}>
+            <SelectTrigger className="w-52">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todos">Todos os tamanhos</SelectItem>
+              {state.products.map((p) => (
+                <SelectItem key={p.id} value={p.id}>
+                  {p.nome}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         }
       />
       <div className="p-6">
         <Card>
           <CardContent className="p-0">
-            <DataGrid
-              rows={linhas}
-              columns={columns}
-              rowKey={(r) => String(r.i)}
-              height={640}
-              emptyMessage="Nenhuma linha de BOM para os filtros atuais."
-            />
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Pai</TableHead>
+                  <TableHead>Filho</TableHead>
+                  <TableHead>Modelo</TableHead>
+                  <TableHead>Etapa</TableHead>
+                  <TableHead className="text-right">Qtd por válvula</TableHead>
+                  <TableHead>Unidade</TableHead>
+                  <TableHead>Status</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {linhas.map(({ line, i }) => {
+                  const mat = matById.get(line.childId);
+                  const provisorio = line.qtyPer === null;
+                  return (
+                    <TableRow key={i}>
+                      <TableCell className="font-medium">{line.parentId}</TableCell>
+                      <TableCell>{mat?.descricao ?? line.childId}</TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {line.modelId ?? "Ambos"}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground text-xs">
+                        {line.stageId}
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        <Input
+                          type="number"
+                          min={0}
+                          step="any"
+                          value={line.qtyPer ?? ""}
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            setBomQty(i, v === "" ? null : Number(v));
+                          }}
+                          className="h-8 w-24 ml-auto text-right tabular-nums"
+                        />
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {mat?.unidade ?? "—"}
+                      </TableCell>
+                      <TableCell>
+                        {provisorio ? (
+                          <ProvisionalBadge />
+                        ) : (
+                          <span className="text-xs text-success">Definido</span>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
           </CardContent>
         </Card>
-        <p className="mt-3 text-xs text-muted-foreground">
-          {linhas.length} linhas · grid virtualizado, otimizado para desktop de alta densidade.
-        </p>
       </div>
     </div>
   );

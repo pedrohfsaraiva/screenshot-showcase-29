@@ -13,7 +13,6 @@ import { reportLovableError } from "../lib/lovable-error-reporting";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { ScenarioProvider } from "@/state/ScenarioContext";
-import { GridViewProvider } from "@/state/GridViewContext";
 import { Toaster } from "@/components/ui/sonner";
 
 function NotFoundComponent() {
