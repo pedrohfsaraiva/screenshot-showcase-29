@@ -248,6 +248,7 @@ function MrpPage() {
                   <TableHead>Descrição</TableHead>
                   <TableHead>Categoria</TableHead>
                   <TableHead>Unidade</TableHead>
+                  <TableHead className="text-right">Rendimento</TableHead>
                   <TableHead className="text-right">Ano 1 · 2027</TableHead>
                   <TableHead className="text-right">Ano 2 · 2028</TableHead>
                   <TableHead className="text-right">Ano 3 · 2029</TableHead>
