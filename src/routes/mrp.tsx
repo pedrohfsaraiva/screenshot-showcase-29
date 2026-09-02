@@ -190,7 +190,7 @@ function MrpPage() {
         a.descricao.localeCompare(b.descricao),
     );
     return filtered;
-  }, [state.bom, state.demand, state.periodos, state.products, matById, modeloFiltro, busca]);
+  }, [state.bom, state.demand, state.periodos, state.products, matById, rendimentoAcumulado, modeloFiltro, busca]);
 
   const totals = useMemo(() => {
     return rows.reduce(
