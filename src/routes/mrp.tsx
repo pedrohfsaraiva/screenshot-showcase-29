@@ -79,6 +79,31 @@ function MrpPage() {
     [state.materials],
   );
 
+  // Rendimento acumulado por (modelo, material): produto dos yields das etapas
+  // do caminho do componente. Fallback 1 (100%) quando não há yield cadastrado.
+  const rendimentoAcumulado = useMemo(() => {
+    const yieldByStageModel = new Map<string, number>();
+    for (const y of state.yields) {
+      if (y.valor !== null && y.valor !== undefined && y.valor > 0) {
+        yieldByStageModel.set(`${y.stageId}__${y.modelId}`, y.valor);
+      }
+    }
+    const cache = new Map<string, number>();
+    return (modelo: ModelId, materialId: string): number => {
+      const cacheKey = `${modelo}__${materialId}`;
+      const hit = cache.get(cacheKey);
+      if (hit !== undefined) return hit;
+      const path = MATERIAL_YIELD_PATH[materialId] ?? [];
+      let acc = 1;
+      for (const stageId of path) {
+        const y = yieldByStageModel.get(`${stageId}__${modelo}`);
+        if (y !== undefined) acc *= y;
+      }
+      cache.set(cacheKey, acc);
+      return acc;
+    };
+  }, [state.yields]);
+
   // Necessidade bruta anual por (modelo, material) — soma mensal × qtyPer da BOM.
   const rows = useMemo<Row[]>(() => {
     // Demanda por (modelo, ano). Ano = índice do período / 12.
