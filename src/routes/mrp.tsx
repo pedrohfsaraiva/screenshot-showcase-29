@@ -258,7 +258,7 @@ function MrpPage() {
               <TableBody>
                 {rows.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={9} className="text-center text-sm text-muted-foreground py-10">
+                    <TableCell colSpan={10} className="text-center text-sm text-muted-foreground py-10">
                       Nenhuma necessidade calculada. Verifique demanda e quantidades da BOM.
                     </TableCell>
                   </TableRow>
@@ -279,6 +279,9 @@ function MrpPage() {
                       </TableCell>
                       <TableCell className="text-muted-foreground">{r.categoria}</TableCell>
                       <TableCell className="text-muted-foreground">{r.unidade}</TableCell>
+                      <TableCell className="text-right tabular-nums text-muted-foreground">
+                        {(r.rendimento * 100).toFixed(1).replace(".", ",")}%
+                      </TableCell>
                       <TableCell className="text-right tabular-nums">
                         {r.definida ? formatInt(r.y1) : "—"}
                       </TableCell>
