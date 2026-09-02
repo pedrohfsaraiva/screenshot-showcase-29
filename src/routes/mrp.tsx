@@ -46,11 +46,28 @@ interface Row {
   categoria: string;
   unidade: string;
   definida: boolean;
+  rendimento: number; // rendimento acumulado aplicado (1 = 100%)
   y1: number;
   y2: number;
   y3: number;
   total: number;
 }
+
+/**
+ * Caminho de etapas de rendimento pelas quais o componente passa até ficar
+ * disponível (aprovado) para consumo. O rendimento acumulado é o produto dos
+ * yields dessas etapas. Itens comprados/consumíveis não passam por etapas de
+ * rendimento → 100%.
+ */
+const MATERIAL_YIELD_PATH: Record<string, string[]> = {
+  leaflet: ["leaflets", "leaflet_matching"],
+  inner_skirt: ["inner_skirt"],
+  sealing_atrial: ["sealing_atrial"],
+  sealing_ventricular: ["sealing_ventricular"],
+  inner_stent: ["inner_stent_prep"],
+  outer_stent: ["outer_stent_prep"],
+  sleeve: ["sleeves"],
+};
 
 function MrpPage() {
   const { state } = useScenario();
