@@ -2,9 +2,10 @@ import { createFileRoute } from "@tanstack/react-router";
 import { OverviewPage } from "@/pages/overview";
 
 export const Route = createFileRoute("/")({
-  validateSearch: (search: Record<string, unknown>) => ({
-    tab: search.tab === "demanda" ? ("demanda" as const) : ("resumo" as const),
-  }),
+  validateSearch: (
+    search: Record<string, unknown>,
+  ): { tab?: "demanda" } =>
+    search.tab === "demanda" ? { tab: "demanda" } : {},
   head: () => ({
     meta: [
       { title: "Visão Geral · Topaz MRP" },
