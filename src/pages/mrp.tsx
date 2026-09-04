@@ -33,6 +33,9 @@ interface Row {
   unidade: string;
   definida: boolean;
   rendimento: number; // rendimento acumulado aplicado (1 = 100%)
+  b1: number;
+  b2: number;
+  b3: number;
   y1: number;
   y2: number;
   y3: number;
@@ -59,6 +62,7 @@ export function MrpPage() {
   const { state } = useScenario();
   const [modeloFiltro, setModeloFiltro] = useState<ModelFilter>("all");
   const [busca, setBusca] = useState("");
+  const [periodo, setPeriodo] = useState<"1" | "2" | "3">("3");
 
   const matById = useMemo(
     () => new Map(state.materials.map((m) => [m.id, m])),
@@ -125,11 +129,17 @@ export function MrpPage() {
         const rend = rendimentoAcumulado(modelo, material.id);
         const bruta = (aprovada: number) =>
           definida ? Math.ceil(aprovada / rend) : 0;
+        const b1 = definida ? dem[0] * qty : 0;
+        const b2 = definida ? dem[1] * qty : 0;
+        const b3 = definida ? dem[2] * qty : 0;
         const y1 = bruta(dem[0] * qty);
         const y2 = bruta(dem[1] * qty);
         const y3 = bruta(dem[2] * qty);
         const prev = acc.get(key);
         if (prev) {
+          prev.b1 += b1;
+          prev.b2 += b2;
+          prev.b3 += b3;
           prev.y1 += y1;
           prev.y2 += y2;
           prev.y3 += y3;
@@ -146,6 +156,9 @@ export function MrpPage() {
             unidade: material.unidade,
             definida,
             rendimento: rend,
+            b1,
+            b2,
+            b3,
             y1,
             y2,
             y3,
@@ -178,24 +191,26 @@ export function MrpPage() {
     return filtered;
   }, [state.bom, state.demand, state.periodos, state.products, matById, rendimentoAcumulado, modeloFiltro, busca]);
 
+  const anos = Number(periodo);
+  const bruta = (r: Row) => [r.b1, r.b2, r.b3].slice(0, anos).reduce((a, b) => a + b, 0);
+  const producao = (r: Row) => [r.y1, r.y2, r.y3].slice(0, anos).reduce((a, b) => a + b, 0);
+
   const totals = useMemo(() => {
     return rows.reduce(
       (acc, r) => {
-        acc.y1 += r.y1;
-        acc.y2 += r.y2;
-        acc.y3 += r.y3;
-        acc.total += r.total;
+        acc.bruta += bruta(r);
+        acc.producao += producao(r);
         return acc;
       },
-      { y1: 0, y2: 0, y3: 0, total: 0 },
+      { bruta: 0, producao: 0 },
     );
-  }, [rows]);
+  }, [rows, periodo]);
 
   return (
     <div>
       <PageHeader
-        title="MRP Líquida · Consolidação 3 anos"
-        subtitle="Necessidade bruta de componentes consolidada por ano calendário (2027 · 2028 · 2029)."
+        title="Necessidade de materiais"
+        subtitle="Quanto de cada material é necessário no período escolhido. A necessidade de produção já considera as perdas (rendimento) do processo."
         actions={
           <div className="flex items-center gap-2">
             <Input
@@ -204,6 +219,16 @@ export function MrpPage() {
               onChange={(e) => setBusca(e.target.value)}
               className="w-56"
             />
+            <Select value={periodo} onValueChange={(v) => setPeriodo(v as "1" | "2" | "3")}>
+              <SelectTrigger className="w-36">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="1">1 ano</SelectItem>
+                <SelectItem value="2">2 anos</SelectItem>
+                <SelectItem value="3">3 anos</SelectItem>
+              </SelectContent>
+            </Select>
             <Select
               value={modeloFiltro}
               onValueChange={(v) => setModeloFiltro(v as ModelFilter)}
@@ -235,16 +260,14 @@ export function MrpPage() {
                   <TableHead>Categoria</TableHead>
                   <TableHead>Unidade</TableHead>
                   <TableHead className="text-right">Rendimento</TableHead>
-                  <TableHead className="text-right">Ano 1 · 2027</TableHead>
-                  <TableHead className="text-right">Ano 2 · 2028</TableHead>
-                  <TableHead className="text-right">Ano 3 · 2029</TableHead>
-                  <TableHead className="text-right">Total 3 Anos</TableHead>
+                  <TableHead className="text-right">Necessidade bruta</TableHead>
+                  <TableHead className="text-right">Necessidade de produção</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {rows.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={10} className="text-center text-sm text-muted-foreground py-10">
+                    <TableCell colSpan={8} className="text-center text-sm text-muted-foreground py-10">
                       Nenhuma necessidade calculada. Verifique demanda e quantidades da BOM.
                     </TableCell>
                   </TableRow>
@@ -269,16 +292,10 @@ export function MrpPage() {
                         {(r.rendimento * 100).toFixed(1).replace(".", ",")}%
                       </TableCell>
                       <TableCell className="text-right tabular-nums">
-                        {r.definida ? formatInt(r.y1) : "—"}
-                      </TableCell>
-                      <TableCell className="text-right tabular-nums">
-                        {r.definida ? formatInt(r.y2) : "—"}
-                      </TableCell>
-                      <TableCell className="text-right tabular-nums">
-                        {r.definida ? formatInt(r.y3) : "—"}
+                        {r.definida ? formatInt(bruta(r)) : "—"}
                       </TableCell>
                       <TableCell className="text-right tabular-nums font-semibold text-primary">
-                        {r.definida ? formatInt(r.total) : "—"}
+                        {r.definida ? formatInt(producao(r)) : "—"}
                       </TableCell>
                     </TableRow>
                   ))
@@ -291,16 +308,10 @@ export function MrpPage() {
                       Total geral (linhas filtradas)
                     </td>
                     <td className="px-4 py-3 text-right tabular-nums font-semibold">
-                      {formatInt(totals.y1)}
-                    </td>
-                    <td className="px-4 py-3 text-right tabular-nums font-semibold">
-                      {formatInt(totals.y2)}
-                    </td>
-                    <td className="px-4 py-3 text-right tabular-nums font-semibold">
-                      {formatInt(totals.y3)}
+                      {formatInt(totals.bruta)}
                     </td>
                     <td className="px-4 py-3 text-right tabular-nums font-semibold text-primary">
-                      {formatInt(totals.total)}
+                      {formatInt(totals.producao)}
                     </td>
                   </tr>
                 </tfoot>
