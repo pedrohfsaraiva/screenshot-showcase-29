@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { RendimentosPage } from "@/pages/rendimentos";
+import { RendimentosHubPage } from "@/pages/rendimentos-hub";
 
 export const Route = createFileRoute("/rendimentos")({
   head: () => ({
@@ -20,5 +20,5 @@ export const Route = createFileRoute("/rendimentos")({
       { name: "twitter:card", content: "summary" },
     ],
   }),
-  component: RendimentosPage,
+  component: RendimentosHubPage,
 });

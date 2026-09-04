@@ -180,7 +180,7 @@ export function Dashboard() {
               </SelectContent>
             </Select>
             <Button asChild size="sm" className="gap-1.5">
-              <Link to="/cenarios">
+              <Link to="/" search={{ tab: "demanda" as const }}>
                 <Plus className="h-4 w-4" />
                 Inserir Demanda
               </Link>
@@ -266,7 +266,7 @@ export function Dashboard() {
               {totalDemandaHorizonte === 0 ? (
                 <div className="absolute inset-0 flex items-center justify-center">
                   <Button asChild size="lg" variant="outline" className="gap-2">
-                    <Link to="/cenarios">
+                    <Link to="/" search={{ tab: "demanda" as const }}>
                       <Plus className="h-4 w-4" />
                       Configurar Demanda Inicial
                     </Link>
