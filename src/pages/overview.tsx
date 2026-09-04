@@ -12,7 +12,7 @@ export function OverviewPage() {
     <Tabs
       value={tab}
       onValueChange={(v) =>
-        navigate({ to: "/", search: { tab: v === "demanda" ? "demanda" : "resumo" } })
+        navigate({ to: "/", search: v === "demanda" ? { tab: "demanda" as const } : {} })
       }
     >
       <div className="border-b border-border px-6 pt-4">
