@@ -24,15 +24,9 @@ import {
 
 const items = [
   { title: "Visão Geral", url: "/", icon: LayoutDashboard },
-  { title: "Rota (Pipeline)", url: "/rota", icon: GitBranch },
-  { title: "BOM", url: "/bom", icon: Boxes },
-  { title: "Materiais", url: "/materiais", icon: Package },
-  { title: "MRP Líquida", url: "/mrp", icon: ClipboardList },
+  { title: "Rendimentos", url: "/rendimentos", icon: Database },
+  { title: "Necessidade de Materiais", url: "/materiais", icon: Package },
   { title: "Capacidade", url: "/capacidade", icon: Factory },
-  { title: "Custos", url: "/custos", icon: DollarSign },
-  { title: "Rendimentos (DB)", url: "/rendimentos", icon: Database },
-  { title: "Qualidade dos Dados", url: "/qualidade", icon: ShieldCheck },
-  { title: "Cenários", url: "/cenarios", icon: Settings },
 ];
 
 export function AppSidebar() {
