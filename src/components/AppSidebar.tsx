@@ -1,16 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import {
-  LayoutDashboard,
-  GitBranch,
-  Package,
-  Boxes,
-  Factory,
-  DollarSign,
-  ShieldCheck,
-  Settings,
-  ClipboardList,
-  Database,
-} from "lucide-react";
+import { LayoutDashboard, Package, Factory, Database } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
