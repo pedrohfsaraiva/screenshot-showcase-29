@@ -461,7 +461,7 @@ export function CapacidadePage() {
               </ResponsiveContainer>
             ) : (
               <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-                Informe operadores atuais por recurso e a demanda em Cenários para ver a
+                Informe operadores atuais por recurso e a demanda na aba Demanda para ver a
                 utilização mensal.
               </div>
             )}
