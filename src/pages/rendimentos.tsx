@@ -145,7 +145,7 @@ export function RendimentosPage() {
         <div className="grid gap-5 sm:grid-cols-3">
           <Kpi label="Componentes mapeados" value={String(rows.length)} />
           <Kpi
-            label="Pendentes / Desatualizados"
+            label="Vencidos ou próximos do vencimento"
             value={String(desatualizados)}
             danger={desatualizados > 0}
           />
