@@ -75,7 +75,7 @@ export function RotaPage() {
         subtitle={
           totalDemanda > 0
             ? `Necessidade calculada sobre a demanda cadastrada (${formatInt(totalDemanda)} válvulas).`
-            : "Referência de 1.000 válvulas por modelo (edite a demanda em Cenários para usar valores reais)."
+            : "Referência de 1.000 válvulas por modelo (edite a demanda na aba Demanda para usar valores reais)."
         }
         actions={
           <div className="flex items-center gap-2">

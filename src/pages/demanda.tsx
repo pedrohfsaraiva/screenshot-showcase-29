@@ -24,7 +24,7 @@ import type { ModelId } from "@/domain/types";
 import { cn } from "@/lib/utils";
 
 
-export function CenariosPage() {
+export function DemandaPage() {
   const { state, setDemand, setDemandBulk, resetToSeed } = useScenario();
   const [modelo, setModelo] = useState<ModelId>(
     (state.products[0]?.id as ModelId) ?? "TR1P-45",
@@ -101,7 +101,7 @@ export function CenariosPage() {
   return (
     <div>
       <PageHeader
-        title="Cenários"
+        title="Demanda"
         subtitle={`Cenário ${state.scenarioId} · base ${state.baseDate} · horizonte de 36 meses. A demanda aqui alimenta MRP e Capacidade em tempo real.`}
         actions={
           <div className="flex gap-2">

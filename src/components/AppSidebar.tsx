@@ -1,5 +1,15 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { LayoutDashboard, Package, Factory, Database } from "lucide-react";
+import {
+  LayoutDashboard,
+  CalendarRange,
+  Package,
+  Factory,
+  Workflow,
+  Percent,
+  Layers,
+  Boxes,
+  ShieldCheck,
+} from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -11,11 +21,34 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
 
-const items = [
-  { title: "Visão Geral", url: "/", icon: LayoutDashboard },
-  { title: "Rendimentos", url: "/rendimentos", icon: Database },
-  { title: "Necessidade de Materiais", url: "/materiais", icon: Package },
-  { title: "Capacidade", url: "/capacidade", icon: Factory },
+const groups = [
+  {
+    label: "Visão Geral",
+    items: [{ title: "Dashboard", url: "/", icon: LayoutDashboard }],
+  },
+  {
+    label: "Planejamento",
+    items: [
+      { title: "Demanda", url: "/demanda", icon: CalendarRange },
+      { title: "MRP", url: "/mrp", icon: Package },
+      { title: "Capacidade", url: "/capacidade", icon: Factory },
+    ],
+  },
+  {
+    label: "Processo",
+    items: [
+      { title: "Rota", url: "/rota", icon: Workflow },
+      { title: "Rendimentos", url: "/rendimentos", icon: Percent },
+      { title: "BOM", url: "/bom", icon: Layers },
+    ],
+  },
+  {
+    label: "Dados",
+    items: [
+      { title: "Materiais", url: "/materiais", icon: Boxes },
+      { title: "Qualidade", url: "/qualidade", icon: ShieldCheck },
+    ],
+  },
 ];
 
 export function AppSidebar() {
@@ -25,10 +58,10 @@ export function AppSidebar() {
 
   return (
     <Sidebar collapsible="icon">
-      <SidebarContent>
-        <div className="px-4 py-5 border-b border-sidebar-border">
-          <div className="flex items-center gap-2">
-            <div className="h-8 w-8 rounded-md bg-primary flex items-center justify-center text-primary-foreground font-bold text-sm">
+      <SidebarContent className="gap-1">
+        <div className="px-4 py-5">
+          <div className="flex items-center gap-2.5">
+            <div className="h-8 w-8 shrink-0 rounded-lg bg-primary flex items-center justify-center text-primary-foreground font-bold text-sm">
               T
             </div>
             <div className="min-w-0">
@@ -41,23 +74,33 @@ export function AppSidebar() {
             </div>
           </div>
         </div>
-        <SidebarGroup>
-          <SidebarGroupLabel>Planejamento</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {items.map((item) => (
-                <SidebarMenuItem key={item.url}>
-                  <SidebarMenuButton asChild isActive={isActive(item.url)}>
-                    <Link to={item.url} className="flex items-center gap-2">
-                      <item.icon className="h-4 w-4" />
-                      <span>{item.title}</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+
+        {groups.map((group) => (
+          <SidebarGroup key={group.label} className="py-1">
+            <SidebarGroupLabel className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground/70">
+              {group.label}
+            </SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu className="gap-0.5">
+                {group.items.map((item) => (
+                  <SidebarMenuItem key={item.url}>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={isActive(item.url)}
+                      tooltip={item.title}
+                      className="data-[active=true]:bg-primary/12 data-[active=true]:font-medium data-[active=true]:text-primary"
+                    >
+                      <Link to={item.url} className="flex items-center gap-2.5">
+                        <item.icon className="h-4 w-4 shrink-0" />
+                        <span className="truncate">{item.title}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        ))}
       </SidebarContent>
     </Sidebar>
   );
