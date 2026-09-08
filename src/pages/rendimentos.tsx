@@ -76,7 +76,7 @@ export function RendimentosPage() {
     );
   }, [rows, busca]);
 
-  const desatualizados = rows.filter((r) => r.status_dados !== "Atualizado").length;
+  const desatualizados = rows.filter((r) => statusValidade(r) !== "Válido").length;
 
   async function importar(file: File) {
     setMsg(null);
