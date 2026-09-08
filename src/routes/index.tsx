@@ -1,11 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { OverviewPage } from "@/pages/overview";
+import { Dashboard } from "@/pages/index";
 
 export const Route = createFileRoute("/")({
-  validateSearch: (
-    search: Record<string, unknown>,
-  ): { tab?: "demanda" } =>
-    search.tab === "demanda" ? { tab: "demanda" } : {},
   head: () => ({
     meta: [
       { title: "Visão Geral · Topaz MRP" },
@@ -23,5 +19,5 @@ export const Route = createFileRoute("/")({
       { name: "twitter:card", content: "summary" },
     ],
   }),
-  component: OverviewPage,
+  component: Dashboard,
 });

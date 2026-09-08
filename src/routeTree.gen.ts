@@ -14,6 +14,7 @@ import { Route as RendimentosRouteImport } from './routes/rendimentos'
 import { Route as QualidadeRouteImport } from './routes/qualidade'
 import { Route as MrpRouteImport } from './routes/mrp'
 import { Route as MateriaisRouteImport } from './routes/materiais'
+import { Route as DemandaRouteImport } from './routes/demanda'
 import { Route as CapacidadeRouteImport } from './routes/capacidade'
 import { Route as BomRouteImport } from './routes/bom'
 import { Route as IndexRouteImport } from './routes/index'
@@ -43,6 +44,11 @@ const MateriaisRoute = MateriaisRouteImport.update({
   path: '/materiais',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DemandaRoute = DemandaRouteImport.update({
+  id: '/demanda',
+  path: '/demanda',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CapacidadeRoute = CapacidadeRouteImport.update({
   id: '/capacidade',
   path: '/capacidade',
@@ -63,6 +69,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/bom': typeof BomRoute
   '/capacidade': typeof CapacidadeRoute
+  '/demanda': typeof DemandaRoute
   '/materiais': typeof MateriaisRoute
   '/mrp': typeof MrpRoute
   '/qualidade': typeof QualidadeRoute
@@ -73,6 +80,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/bom': typeof BomRoute
   '/capacidade': typeof CapacidadeRoute
+  '/demanda': typeof DemandaRoute
   '/materiais': typeof MateriaisRoute
   '/mrp': typeof MrpRoute
   '/qualidade': typeof QualidadeRoute
@@ -84,6 +92,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/bom': typeof BomRoute
   '/capacidade': typeof CapacidadeRoute
+  '/demanda': typeof DemandaRoute
   '/materiais': typeof MateriaisRoute
   '/mrp': typeof MrpRoute
   '/qualidade': typeof QualidadeRoute
@@ -96,6 +105,7 @@ export interface FileRouteTypes {
     | '/'
     | '/bom'
     | '/capacidade'
+    | '/demanda'
     | '/materiais'
     | '/mrp'
     | '/qualidade'
@@ -106,6 +116,7 @@ export interface FileRouteTypes {
     | '/'
     | '/bom'
     | '/capacidade'
+    | '/demanda'
     | '/materiais'
     | '/mrp'
     | '/qualidade'
@@ -116,6 +127,7 @@ export interface FileRouteTypes {
     | '/'
     | '/bom'
     | '/capacidade'
+    | '/demanda'
     | '/materiais'
     | '/mrp'
     | '/qualidade'
@@ -127,6 +139,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   BomRoute: typeof BomRoute
   CapacidadeRoute: typeof CapacidadeRoute
+  DemandaRoute: typeof DemandaRoute
   MateriaisRoute: typeof MateriaisRoute
   MrpRoute: typeof MrpRoute
   QualidadeRoute: typeof QualidadeRoute
@@ -171,6 +184,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MateriaisRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/demanda': {
+      id: '/demanda'
+      path: '/demanda'
+      fullPath: '/demanda'
+      preLoaderRoute: typeof DemandaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/capacidade': {
       id: '/capacidade'
       path: '/capacidade'
@@ -199,6 +219,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   BomRoute: BomRoute,
   CapacidadeRoute: CapacidadeRoute,
+  DemandaRoute: DemandaRoute,
   MateriaisRoute: MateriaisRoute,
   MrpRoute: MrpRoute,
   QualidadeRoute: QualidadeRoute,
