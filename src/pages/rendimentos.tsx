@@ -149,7 +149,7 @@ export function RendimentosPage() {
             value={String(desatualizados)}
             danger={desatualizados > 0}
           />
-          <Kpi label="Limite de defasagem" value={`${LIMITE_DIAS} dias`} />
+          <Kpi label="Validade do dado" value={`${LIMITE_DIAS} dias`} />
         </div>
 
         {msg ? (
