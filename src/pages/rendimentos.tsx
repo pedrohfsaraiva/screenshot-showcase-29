@@ -190,7 +190,9 @@ export function RendimentosPage() {
                     </tr>
                   ) : (
                     filtradas.map((r) => {
-                      const ok = r.status_dados === "Atualizado";
+                      const status = statusValidade(r);
+                      const ok = status === "Válido";
+                      const alerta = status === "Próximo do vencimento";
                       return (
                         <tr key={r.id_componente} className="border-b border-border/50">
                           <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">
