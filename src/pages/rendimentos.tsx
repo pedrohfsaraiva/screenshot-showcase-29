@@ -230,7 +230,9 @@ export function RendimentosPage() {
                               className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] font-medium ${
                                 ok
                                   ? "bg-success/10 text-success"
-                                  : "bg-destructive/10 text-destructive"
+                                  : alerta
+                                    ? "bg-warning/10 text-warning"
+                                    : "bg-destructive/10 text-destructive"
                               }`}
                             >
                               {ok ? (
@@ -238,7 +240,7 @@ export function RendimentosPage() {
                               ) : (
                                 <AlertTriangle className="h-3 w-3" />
                               )}
-                              {r.status_dados}
+                              {status}
                             </span>
                           </td>
                         </tr>
