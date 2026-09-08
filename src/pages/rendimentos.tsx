@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { statusValidade } from "@/lib/rendimentos";
 
 
 interface StatusRow {
@@ -76,7 +77,7 @@ export function RendimentosPage() {
     );
   }, [rows, busca]);
 
-  const desatualizados = rows.filter((r) => r.status_dados !== "Atualizado").length;
+  const desatualizados = rows.filter((r) => statusValidade(r) !== "Válido").length;
 
   async function importar(file: File) {
     setMsg(null);
@@ -144,11 +145,11 @@ export function RendimentosPage() {
         <div className="grid gap-5 sm:grid-cols-3">
           <Kpi label="Componentes mapeados" value={String(rows.length)} />
           <Kpi
-            label="Pendentes / Desatualizados"
+            label="Vencidos ou próximos do vencimento"
             value={String(desatualizados)}
             danger={desatualizados > 0}
           />
-          <Kpi label="Limite de defasagem" value={`${LIMITE_DIAS} dias`} />
+          <Kpi label="Validade do dado" value={`${LIMITE_DIAS} dias`} />
         </div>
 
         {msg ? (
@@ -189,7 +190,9 @@ export function RendimentosPage() {
                     </tr>
                   ) : (
                     filtradas.map((r) => {
-                      const ok = r.status_dados === "Atualizado";
+                      const status = statusValidade(r);
+                      const ok = status === "Válido";
+                      const alerta = status === "Próximo do vencimento";
                       return (
                         <tr key={r.id_componente} className="border-b border-border/50">
                           <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">
@@ -227,7 +230,9 @@ export function RendimentosPage() {
                               className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] font-medium ${
                                 ok
                                   ? "bg-success/10 text-success"
-                                  : "bg-destructive/10 text-destructive"
+                                  : alerta
+                                    ? "bg-warning/10 text-warning"
+                                    : "bg-destructive/10 text-destructive"
                               }`}
                             >
                               {ok ? (
@@ -235,7 +240,7 @@ export function RendimentosPage() {
                               ) : (
                                 <AlertTriangle className="h-3 w-3" />
                               )}
-                              {r.status_dados}
+                              {status}
                             </span>
                           </td>
                         </tr>

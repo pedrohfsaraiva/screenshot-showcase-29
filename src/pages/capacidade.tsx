@@ -254,8 +254,8 @@ export function CapacidadePage() {
   return (
     <div>
       <PageHeader
-        title="Capacidade · Horas padrão"
-        subtitle={`Carga convertida em horas padrão e comparada com ${horasPorOperadorMes.toFixed(1)} h/operador/mês (calendário líquido).`}
+        title="Capacidade"
+        subtitle={`Compara o trabalho necessário com o tempo disponível da equipe (${horasPorOperadorMes.toFixed(1)} h por pessoa/mês).`}
       />
 
       <div className="px-6 pt-4 flex flex-wrap items-end gap-4">
@@ -337,7 +337,7 @@ export function CapacidadePage() {
           <Card>
             <CardContent className="p-5">
               <p className="text-xs uppercase tracking-wider text-muted-foreground">
-                Horas padrão totais
+                Trabalho necessário (horas)
               </p>
               <p className="mt-2 text-2xl font-semibold tabular-nums">
                 {formatInt(totalHoras)} h
@@ -347,26 +347,26 @@ export function CapacidadePage() {
           <Card>
             <CardContent className="p-5">
               <p className="text-xs uppercase tracking-wider text-muted-foreground">
-                FTE base (contratos fixos)
+                Colaboradores fixos necessários
               </p>
               <p className="mt-2 text-2xl font-semibold tabular-nums">
                 {fteTotalMedio.toFixed(2)}
               </p>
               <p className="mt-1 text-[11px] text-muted-foreground">
-                Média do horizonte — quadro permanente.
+                Média do período — equipe permanente.
               </p>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="p-5">
               <p className="text-xs uppercase tracking-wider text-muted-foreground">
-                FTE temporário / horas extras
+                Reforço temporário / horas extras
               </p>
               <p className="mt-2 text-2xl font-semibold tabular-nums">
                 {fteTemporario.toFixed(2)}
               </p>
               <p className="mt-1 text-[11px] text-muted-foreground">
-                Gap do pico sobre o quadro base.
+                Diferença entre o mês de pico e a equipe fixa.
               </p>
             </CardContent>
           </Card>
@@ -375,7 +375,7 @@ export function CapacidadePage() {
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <p className="text-xs uppercase tracking-wider text-muted-foreground">
-                    FTE no pico
+                    Colaboradores no mês de pico
                   </p>
                   <p className="mt-2 text-2xl font-semibold tabular-nums">
                     {fteTotalPico.toFixed(2)}
