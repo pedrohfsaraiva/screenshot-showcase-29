@@ -66,3 +66,17 @@ export function mapRendimentos(rows: RendimentoStatusRow[]): MappedRendimento[] 
 export function isDefasado(row: RendimentoStatusRow): boolean {
   return row.status_dados !== "Atualizado";
 }
+
+export type StatusValidade = "Válido" | "Próximo do vencimento" | "Vencido";
+
+/**
+ * Rótulo simples de validade: válido nos primeiros 30 dias; nos últimos 7 dias
+ * dessa janela aparece como "próximo do vencimento".
+ */
+export function statusValidade(row: RendimentoStatusRow): StatusValidade {
+  const dias = row.dias_desde_atualizacao;
+  if (row.rendimento === null || dias === null || dias === undefined) return "Vencido";
+  if (dias > LIMITE_DIAS_DEFASAGEM) return "Vencido";
+  if (dias > LIMITE_DIAS_DEFASAGEM - 7) return "Próximo do vencimento";
+  return "Válido";
+}
