@@ -32,6 +32,7 @@ import {
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { useScenario } from "@/state/ScenarioContext";
+import { useCapacityFte } from "@/hooks/useCapacityFte";
 import { rolledThroughputYield } from "@/engine/yield";
 import { reverseExplode } from "@/engine/reverseExplosion";
 import { formatInt, formatPeriod } from "@/lib/format";
