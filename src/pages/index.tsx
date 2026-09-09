@@ -32,6 +32,7 @@ import {
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { useScenario } from "@/state/ScenarioContext";
+import { useCapacityFte } from "@/hooks/useCapacityFte";
 import { rolledThroughputYield } from "@/engine/yield";
 import { reverseExplode } from "@/engine/reverseExplosion";
 import { formatInt, formatPeriod } from "@/lib/format";
@@ -447,6 +448,35 @@ function FilterField({
       </Label>
       {children}
     </div>
+  );
+}
+
+function PrimaryKpi({
+  icon,
+  label,
+  value,
+  hint,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+  hint?: string;
+}) {
+  return (
+    <Card>
+      <CardContent className="p-6">
+        <div className="flex items-center justify-between text-muted-foreground">
+          <span className="text-xs uppercase tracking-wider">{label}</span>
+          <span className="text-primary">{icon}</span>
+        </div>
+        <div className="mt-2 text-4xl font-semibold tabular-nums text-right">
+          {value}
+        </div>
+        {hint ? (
+          <div className="mt-1 text-xs text-muted-foreground">{hint}</div>
+        ) : null}
+      </CardContent>
+    </Card>
   );
 }
 
