@@ -37,6 +37,31 @@ function parseCsv(text: string): Array<Record<string, string>> {
   });
 }
 
+/** Lê .xlsx/.xls usando o mesmo formato de colunas do CSV. */
+async function parseExcel(file: File): Promise<Array<Record<string, string>>> {
+  const XLSX = await import("xlsx");
+  const buf = await file.arrayBuffer();
+  const wb = XLSX.read(buf, { type: "array", cellDates: true, dateNF: "dd/mm/yyyy" });
+  const sheet = wb.Sheets[wb.SheetNames[0]];
+  if (!sheet) return [];
+  const matrix = XLSX.utils.sheet_to_json<unknown[]>(sheet, {
+    header: 1,
+    raw: false,
+    dateNF: "dd/mm/yyyy",
+    blankrows: false,
+    defval: "",
+  });
+  if (matrix.length < 2) return [];
+  const headers = (matrix[0] as unknown[]).map((h) => String(h ?? "").trim().toLowerCase());
+  return matrix.slice(1).map((cells) => {
+    const row: Record<string, string> = {};
+    headers.forEach((h, i) => {
+      row[h] = String((cells as unknown[])[i] ?? "").trim();
+    });
+    return row;
+  });
+}
+
 /** Rendimento já vem em decimal entre 0 e 1; não converter novamente. */
 function toNumber(v: string): number | null {
   if (!v) return null;
