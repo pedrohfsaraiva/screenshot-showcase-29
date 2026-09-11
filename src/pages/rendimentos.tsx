@@ -37,11 +37,24 @@ function parseCsv(text: string): Array<Record<string, string>> {
   });
 }
 
+/** Rendimento já vem em decimal entre 0 e 1; não converter novamente. */
 function toNumber(v: string): number | null {
   if (!v) return null;
   const n = Number(v.replace("%", "").replace(",", "."));
-  if (!Number.isFinite(n)) return null;
-  return Math.round((n > 1 ? n / 100 : n) * 10000) / 10000;
+  if (!Number.isFinite(n) || n < 0 || n > 1) return null;
+  return n;
+}
+
+/** Converte DD/MM/AAAA (ou AAAA-MM-DD) para o formato ISO do banco. */
+function toIsoDate(v: string): string | null {
+  const s = v.trim();
+  if (!s) return null;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  const m = s.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/);
+  if (!m) return null;
+  const [, d, mo, y] = m;
+  const iso = `${y}-${mo.padStart(2, "0")}-${d.padStart(2, "0")}`;
+  return Number.isNaN(new Date(`${iso}T00:00:00Z`).getTime()) ? null : iso;
 }
 
 export function RendimentosPage() {
