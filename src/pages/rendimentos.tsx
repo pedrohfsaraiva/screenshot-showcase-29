@@ -37,6 +37,31 @@ function parseCsv(text: string): Array<Record<string, string>> {
   });
 }
 
+/** Lê .xlsx/.xls usando o mesmo formato de colunas do CSV. */
+async function parseExcel(file: File): Promise<Array<Record<string, string>>> {
+  const XLSX = await import("xlsx");
+  const buf = await file.arrayBuffer();
+  const wb = XLSX.read(buf, { type: "array", cellDates: true, dateNF: "dd/mm/yyyy" });
+  const sheet = wb.Sheets[wb.SheetNames[0]];
+  if (!sheet) return [];
+  const matrix = XLSX.utils.sheet_to_json<unknown[]>(sheet, {
+    header: 1,
+    raw: false,
+    dateNF: "dd/mm/yyyy",
+    blankrows: false,
+    defval: "",
+  });
+  if (matrix.length < 2) return [];
+  const headers = (matrix[0] as unknown[]).map((h) => String(h ?? "").trim().toLowerCase());
+  return matrix.slice(1).map((cells) => {
+    const row: Record<string, string> = {};
+    headers.forEach((h, i) => {
+      row[h] = String((cells as unknown[])[i] ?? "").trim();
+    });
+    return row;
+  });
+}
+
 /** Rendimento já vem em decimal entre 0 e 1; não converter novamente. */
 function toNumber(v: string): number | null {
   if (!v) return null;
@@ -49,7 +74,8 @@ function toNumber(v: string): number | null {
 function toIsoDate(v: string): string | null {
   const s = v.trim();
   if (!s) return null;
-  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  const iso0 = s.match(/^(\d{4}-\d{2}-\d{2})(?:[T ].*)?$/);
+  if (iso0) return iso0[1];
   const m = s.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/);
   if (!m) return null;
   const [, d, mo, y] = m;
@@ -94,8 +120,8 @@ export function RendimentosPage() {
 
   async function importar(file: File) {
     setMsg(null);
-    const text = await file.text();
-    const parsed = parseCsv(text);
+    const isExcel = /\.(xlsx|xls)$/i.test(file.name);
+    const parsed = isExcel ? await parseExcel(file) : parseCsv(await file.text());
     const payload = parsed
       .map((r) => ({
         id_componente: Number(r["id_componente"]),
@@ -127,13 +153,13 @@ export function RendimentosPage() {
     <div>
       <PageHeader
         title="Rendimentos por Componente"
-        subtitle="Dimensão estática de componentes × fatos de rendimento importados por CSV. Etapas 11.A e 11.B permanecem desmembradas."
+        subtitle="Dimensão estática de componentes × fatos de rendimento importados por CSV ou Excel. Etapas 11.A e 11.B permanecem desmembradas."
         actions={
           <div className="flex items-center gap-2">
             <input
               ref={fileRef}
               type="file"
-              accept=".csv,text/csv"
+              accept=".csv,.xlsx,.xls,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
               className="hidden"
               onChange={(e) => {
                 const f = e.target.files?.[0];
@@ -147,7 +173,7 @@ export function RendimentosPage() {
             </Button>
             <Button size="sm" onClick={() => fileRef.current?.click()}>
               <Upload className="mr-2 h-4 w-4" />
-              Importar CSV
+              Importar CSV/Excel
             </Button>
           </div>
         }
