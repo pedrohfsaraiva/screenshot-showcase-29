@@ -37,11 +37,24 @@ function parseCsv(text: string): Array<Record<string, string>> {
   });
 }
 
+/** Rendimento já vem em decimal entre 0 e 1; não converter novamente. */
 function toNumber(v: string): number | null {
   if (!v) return null;
   const n = Number(v.replace("%", "").replace(",", "."));
-  if (!Number.isFinite(n)) return null;
-  return Math.round((n > 1 ? n / 100 : n) * 10000) / 10000;
+  if (!Number.isFinite(n) || n < 0 || n > 1) return null;
+  return n;
+}
+
+/** Converte DD/MM/AAAA (ou AAAA-MM-DD) para o formato ISO do banco. */
+function toIsoDate(v: string): string | null {
+  const s = v.trim();
+  if (!s) return null;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  const m = s.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/);
+  if (!m) return null;
+  const [, d, mo, y] = m;
+  const iso = `${y}-${mo.padStart(2, "0")}-${d.padStart(2, "0")}`;
+  return Number.isNaN(new Date(`${iso}T00:00:00Z`).getTime()) ? null : iso;
 }
 
 export function RendimentosPage() {
@@ -85,23 +98,22 @@ export function RendimentosPage() {
     const parsed = parseCsv(text);
     const payload = parsed
       .map((r) => ({
-        id_componente: Number(r["id_componente"] ?? r["id"]),
-        nome_indicador: (r["nome_indicador"] ?? r["indicador"] ?? "").trim(),
+        id_componente: Number(r["id_componente"]),
+        nome_indicador: (r["nome_indicador"] ?? "").trim(),
         rendimento: toNumber(r["rendimento"] ?? ""),
-        data_atualizacao:
-          (r["data_atualizacao"] ?? "").trim() ||
-          new Date().toISOString().slice(0, 10),
+        data_atualizacao: toIsoDate(r["data_atualizacao"] ?? ""),
       }))
       .filter(
-        (r): r is typeof r & { rendimento: number } =>
+        (r): r is typeof r & { rendimento: number; data_atualizacao: string } =>
           Number.isInteger(r.id_componente) &&
           r.nome_indicador.length > 0 &&
-          r.rendimento !== null,
+          r.rendimento !== null &&
+          r.data_atualizacao !== null,
       );
 
     if (payload.length === 0) {
       setMsg(
-        "Nenhuma linha válida. Cabeçalhos esperados: id_componente, nome_indicador, rendimento, data_atualizacao.",
+        "Nenhuma linha válida. Cabeçalhos esperados: id_componente, nome_indicador, rendimento (decimal 0–1), data_atualizacao (DD/MM/AAAA).",
       );
       return;
     }
@@ -251,9 +263,8 @@ export function RendimentosPage() {
               </table>
             </div>
             <p className="text-xs text-muted-foreground">
-              CSV esperado: <code>id_componente;nome_indicador;rendimento;data_atualizacao</code>.
-              Espaços em branco são removidos (TRIM) e o rendimento é limitado a 4 casas decimais na
-              gravação.
+              CSV esperado: <code>id_componente;nome_indicador;rendimento;data_atualizacao</code>,
+              com rendimento em decimal entre 0 e 1 (ex.: 0.9412 = 94,12%) e data em DD/MM/AAAA.
             </p>
           </CardContent>
         </Card>
