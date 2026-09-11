@@ -263,9 +263,8 @@ export function RendimentosPage() {
               </table>
             </div>
             <p className="text-xs text-muted-foreground">
-              CSV esperado: <code>id_componente;nome_indicador;rendimento;data_atualizacao</code>.
-              Espaços em branco são removidos (TRIM) e o rendimento é limitado a 4 casas decimais na
-              gravação.
+              CSV esperado: <code>id_componente;nome_indicador;rendimento;data_atualizacao</code>,
+              com rendimento em decimal entre 0 e 1 (ex.: 0.9412 = 94,12%) e data em DD/MM/AAAA.
             </p>
           </CardContent>
         </Card>
