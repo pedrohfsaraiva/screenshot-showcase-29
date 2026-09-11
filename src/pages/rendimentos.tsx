@@ -98,23 +98,22 @@ export function RendimentosPage() {
     const parsed = parseCsv(text);
     const payload = parsed
       .map((r) => ({
-        id_componente: Number(r["id_componente"] ?? r["id"]),
-        nome_indicador: (r["nome_indicador"] ?? r["indicador"] ?? "").trim(),
+        id_componente: Number(r["id_componente"]),
+        nome_indicador: (r["nome_indicador"] ?? "").trim(),
         rendimento: toNumber(r["rendimento"] ?? ""),
-        data_atualizacao:
-          (r["data_atualizacao"] ?? "").trim() ||
-          new Date().toISOString().slice(0, 10),
+        data_atualizacao: toIsoDate(r["data_atualizacao"] ?? ""),
       }))
       .filter(
-        (r): r is typeof r & { rendimento: number } =>
+        (r): r is typeof r & { rendimento: number; data_atualizacao: string } =>
           Number.isInteger(r.id_componente) &&
           r.nome_indicador.length > 0 &&
-          r.rendimento !== null,
+          r.rendimento !== null &&
+          r.data_atualizacao !== null,
       );
 
     if (payload.length === 0) {
       setMsg(
-        "Nenhuma linha válida. Cabeçalhos esperados: id_componente, nome_indicador, rendimento, data_atualizacao.",
+        "Nenhuma linha válida. Cabeçalhos esperados: id_componente, nome_indicador, rendimento (decimal 0–1), data_atualizacao (DD/MM/AAAA).",
       );
       return;
     }
