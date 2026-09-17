@@ -8,7 +8,7 @@ Manter todas as páginas, dados e cálculos existentes, alterando somente a orga
   - **Visão Geral:** Dashboard.
   - **Planejamento:** Demanda, Necessidade de Materiais (MRP) e Capacidade.
   - **Dados:** Rendimentos, Rota e BOM.
-- Retirar **Materiais** e **Qualidade** do menu principal, mantendo suas páginas e códigos acessíveis internamente para não eliminar funcionalidades.
+- Retirar **Materiais** do menu principal, mantendo sua página e código acessíveis internamente; **Qualidade** permanece visível no grupo Dados.
 - Renomear o item visível **MRP** para **Necessidade de Materiais**, mantendo a mesma página e os mesmos cálculos.
 - Remover da Qualidade dos Dados somente as pendências visuais de custo e lead time ausentes originadas do cadastro de Materiais.
 - Preservar o uso interno de `state.materials` na BOM, no MRP e em qualquer cálculo existente.
