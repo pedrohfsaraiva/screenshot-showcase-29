@@ -1,5 +1,5 @@
-- [ ] Manter Qualidade visível no grupo Dados.
-- [ ] Reorganizar o menu em Visão Geral, Planejamento e Dados.
-- [ ] Ocultar Materiais sem remover código, dados ou cálculos.
-- [ ] Remover da Qualidade apenas alertas visuais exclusivos de Materiais.
-- [ ] Validar links, páginas, testes e build.
+- [x] Manter Qualidade visível no grupo Dados.
+- [x] Reorganizar o menu em Visão Geral, Planejamento e Dados.
+- [x] Ocultar Materiais sem remover código, dados ou cálculos.
+- [x] Remover da Qualidade apenas alertas visuais exclusivos de Materiais.
+- [x] Validar links, páginas, testes e build.
