@@ -30,14 +30,6 @@ export function QualidadePage() {
       });
     }
   });
-  state.materials.forEach((m) => {
-    if (m.custoCentavos === null) {
-      findings.push({ severidade: "media", mensagem: `Custo unitário ausente: ${m.descricao}` });
-    }
-    if (m.leadTimeMeses === null) {
-      findings.push({ severidade: "media", mensagem: `Lead time ausente: ${m.descricao}` });
-    }
-  });
   state.bom.forEach((b) => {
     if (b.qtyPer === null) {
       findings.push({

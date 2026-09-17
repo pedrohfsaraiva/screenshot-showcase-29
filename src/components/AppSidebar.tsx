@@ -7,7 +7,6 @@ import {
   Workflow,
   Percent,
   Layers,
-  Boxes,
   ShieldCheck,
 } from "lucide-react";
 import {
@@ -30,22 +29,16 @@ const groups = [
     label: "Planejamento",
     items: [
       { title: "Demanda", url: "/demanda", icon: CalendarRange },
-      { title: "MRP", url: "/mrp", icon: Package },
+      { title: "Necessidade de Materiais", url: "/mrp", icon: Package },
       { title: "Capacidade", url: "/capacidade", icon: Factory },
-    ],
-  },
-  {
-    label: "Processo",
-    items: [
-      { title: "Rota", url: "/rota", icon: Workflow },
-      { title: "Rendimentos", url: "/rendimentos", icon: Percent },
-      { title: "BOM", url: "/bom", icon: Layers },
     ],
   },
   {
     label: "Dados",
     items: [
-      { title: "Materiais", url: "/materiais", icon: Boxes },
+      { title: "Rendimentos", url: "/rendimentos", icon: Percent },
+      { title: "Rota", url: "/rota", icon: Workflow },
+      { title: "BOM", url: "/bom", icon: Layers },
       { title: "Qualidade", url: "/qualidade", icon: ShieldCheck },
     ],
   },
